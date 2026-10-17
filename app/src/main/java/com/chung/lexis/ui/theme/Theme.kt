@@ -1,6 +1,5 @@
 package com.chung.lexis.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -12,32 +11,64 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = LexisDarkPrimary,
+    onPrimary = LexisDarkOnPrimary,
+
+    primaryContainer = LexisDarkPrimaryContainer,
+    onPrimaryContainer = LexisDarkOnPrimaryContainer,
+
+    secondaryContainer = LexisDarkSecondaryContainer,
+
+    background = LexisDarkSurface,
+    onBackground = LexisDarkOnSurface,
+
+    surface = LexisDarkSurface,
+    onSurface = LexisDarkOnSurface,
+
+    surfaceVariant = LexisDarkSurfaceContainer,
+    onSurfaceVariant = LexisDarkOnSurfaceVariant,
+
+    surfaceContainerLow = LexisDarkSurfaceContainerLow,
+    surfaceContainer = LexisDarkSurfaceContainer,
+    surfaceContainerHigh = LexisDarkSurfaceContainerHigh,
+
+    outlineVariant = LexisDarkOutlineVariant,
+
+    error = LexisDarkError,
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = LexisPrimary,
+    onPrimary = LexisOnPrimary,
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primaryContainer = LexisPrimaryContainer,
+    onPrimaryContainer = LexisOnPrimaryContainer,
+
+    secondaryContainer = LexisSecondaryContainer,
+
+    background = LexisSurface,
+    onBackground = LexisOnSurface,
+
+    surface = LexisSurface,
+    onSurface = LexisOnSurface,
+
+    surfaceVariant = LexisSurfaceContainer,
+    onSurfaceVariant = LexisOnSurfaceVariant,
+
+    surfaceContainerLow = LexisSurfaceContainerLow,
+    surfaceContainer = LexisSurfaceContainer,
+    surfaceContainerHigh = LexisSurfaceContainerHigh,
+
+    outlineVariant = LexisOutlineVariant,
+
+    error = LexisError,
 )
 
 @Composable
 fun LexisTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Dynamic color is available on Android 12+, but it replaces the Lexis brand palette
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -53,6 +84,7 @@ fun LexisTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = LexisShapes,
         content = content
     )
 }
