@@ -1,4 +1,4 @@
-package com.chung.quickvocab.ui.theme
+package com.chung.lexis.ui.theme
 
 import android.app.Activity
 import android.os.Build
@@ -34,7 +34,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun QuickVocabTheme(
+fun LexisTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,

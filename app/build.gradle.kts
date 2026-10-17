@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.chung.quickvocab"
+    namespace = "com.chung.lexis"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.chung.quickvocab"
+        applicationId = "com.chung.lexis"
         minSdk = 24
         targetSdk = 37
         versionCode = 1

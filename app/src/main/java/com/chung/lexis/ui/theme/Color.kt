@@ -1,4 +1,4 @@
-package com.chung.quickvocab.ui.theme
+package com.chung.lexis.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

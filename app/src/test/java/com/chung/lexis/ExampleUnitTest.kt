@@ -1,4 +1,4 @@
-package com.chung.quickvocab
+package com.chung.lexis
 
 import org.junit.Test
 

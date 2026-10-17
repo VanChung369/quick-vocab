@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "QuickVocab"
+rootProject.name = "Lexis"
 include(":app")
  
