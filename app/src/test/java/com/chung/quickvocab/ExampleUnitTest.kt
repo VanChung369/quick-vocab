@@ -1,4 +1,4 @@
-package com.example.quickvocab
+package com.chung.quickvocab
 
 import org.junit.Test
 

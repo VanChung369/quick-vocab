@@ -1,4 +1,4 @@
-package com.example.quickvocab.ui.theme
+package com.chung.quickvocab.ui.theme
 
 import android.app.Activity
 import android.os.Build

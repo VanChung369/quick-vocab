@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.quickvocab"
+    namespace = "com.chung.quickvocab"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.quickvocab"
+        applicationId = "com.chung.quickvocab"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
