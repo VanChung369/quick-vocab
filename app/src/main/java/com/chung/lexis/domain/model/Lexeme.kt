@@ -9,12 +9,6 @@ data class Lexeme(
     val normalizedText: String,
 
     val languageTag: String,
-    
+
     val enrichmentState: EnrichmentState = EnrichmentState.Pending,
-)
-
-
-data class LexemeUserState(
-    val lexemeId: Long,
-    val isFavorite: Boolean = false,
 )
