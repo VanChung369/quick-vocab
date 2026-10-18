@@ -114,6 +114,7 @@ fun LexisTheme(
 
     CompositionLocalProvider(
         LocalLexisSemanticColors provides semanticColors,
+        LocalLexisTypography provides LexisExtraTypographyDefaults,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

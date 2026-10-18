@@ -19,6 +19,7 @@ fun LexisApp() {
         bottomBar = {
             LexisBottomBar(
                 navController = navController,
+                reviewDueCount = 12,
             )
         },
     ) { innerPadding ->
