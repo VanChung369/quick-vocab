@@ -8,6 +8,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -18,6 +19,7 @@ private val DarkColorScheme = darkColorScheme(
     onPrimaryContainer = LexisDarkOnPrimaryContainer,
 
     secondaryContainer = LexisDarkSecondaryContainer,
+    onSecondaryContainer = LexisDarkOnSecondaryContainer,
 
     background = LexisDarkSurface,
     onBackground = LexisDarkOnSurface,
@@ -31,10 +33,20 @@ private val DarkColorScheme = darkColorScheme(
     surfaceContainerLow = LexisDarkSurfaceContainerLow,
     surfaceContainer = LexisDarkSurfaceContainer,
     surfaceContainerHigh = LexisDarkSurfaceContainerHigh,
+    surfaceContainerHighest = LexisDarkSurfaceContainerHighest,
 
+    outline = LexisDarkOutline,
     outlineVariant = LexisDarkOutlineVariant,
 
     error = LexisDarkError,
+    errorContainer = LexisDarkErrorContainer,
+    onErrorContainer = LexisDarkOnErrorContainer,
+
+    inverseSurface = LexisDarkInverseSurface,
+    inverseOnSurface = LexisDarkInverseOnSurface,
+    inversePrimary = LexisDarkInversePrimary,
+
+    scrim = LexisDarkScrim,
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -45,6 +57,7 @@ private val LightColorScheme = lightColorScheme(
     onPrimaryContainer = LexisOnPrimaryContainer,
 
     secondaryContainer = LexisSecondaryContainer,
+    onSecondaryContainer = LexisOnSecondaryContainer,
 
     background = LexisSurface,
     onBackground = LexisOnSurface,
@@ -58,10 +71,20 @@ private val LightColorScheme = lightColorScheme(
     surfaceContainerLow = LexisSurfaceContainerLow,
     surfaceContainer = LexisSurfaceContainer,
     surfaceContainerHigh = LexisSurfaceContainerHigh,
+    surfaceContainerHighest = LexisSurfaceContainerHighest,
 
+    outline = LexisOutline,
     outlineVariant = LexisOutlineVariant,
 
     error = LexisError,
+    errorContainer = LexisErrorContainer,
+    onErrorContainer = LexisOnErrorContainer,
+
+    inverseSurface = LexisInverseSurface,
+    inverseOnSurface = LexisInverseOnSurface,
+    inversePrimary = LexisInversePrimary,
+
+    scrim = LexisScrim,
 )
 
 @Composable
@@ -81,10 +104,22 @@ fun LexisTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        shapes = LexisShapes,
-        content = content
-    )
+
+    val semanticColors =
+        if (darkTheme) {
+            DarkLexisSemanticColors
+        } else {
+            LightLexisSemanticColors
+        }
+
+    CompositionLocalProvider(
+        LocalLexisSemanticColors provides semanticColors,
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = LexisShapes,
+            content = content,
+        )
+    }
 }
