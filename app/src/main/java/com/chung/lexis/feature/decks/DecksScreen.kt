@@ -18,7 +18,7 @@ fun DecksScreen(
     ) {
 
         Text(
-            text = "Desks",
+            text = "Decks",
             style = MaterialTheme.typography.headlineMedium
         )
     }
