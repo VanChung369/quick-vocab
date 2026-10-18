@@ -11,6 +11,8 @@ data class ReviewLog(
 
     val stateBefore: ReviewState,
 
+    val stateAfter: ReviewState,
+
     val reviewedAt: Instant,
 
     val elapsedDays: Int,
