@@ -7,8 +7,18 @@ import com.chung.lexis.domain.model.EnrichmentState
 import com.chung.lexis.domain.model.Lexeme
 import java.time.Instant
 
-fun LexemeEntity.toDomain(): Result<Lexeme> =
-    runCatching {
+
+fun LexemeEntity.toDomainResult(): Result<Lexeme> {
+    if (
+        enrichmentStatus == EnrichmentStatusColumn.FAILED &&
+        (failureMessage == null || failedAtEpochMillis == null)
+    ) {
+        return Result.failure(
+            IllegalStateException("Invalid FAILED lexeme: $id")
+        )
+    }
+
+    return Result.success(
         Lexeme(
             id = id,
             text = text,
@@ -16,7 +26,8 @@ fun LexemeEntity.toDomain(): Result<Lexeme> =
             languageTag = languageTag,
             enrichmentState = toEnrichmentState(),
         )
-    }
+    )
+}
 
 private fun LexemeEntity.toEnrichmentState(): EnrichmentState =
     when (enrichmentStatus) {
