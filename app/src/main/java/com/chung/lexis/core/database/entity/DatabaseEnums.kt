@@ -1,5 +1,13 @@
 package com.chung.lexis.core.database.entity
 
+
+enum class EnrichmentStatusColumn {
+    PENDING,
+    ENRICHING,
+    READY,
+    FAILED,
+}
+
 enum class MeaningKindColumn {
     TRANSLATION,
     DEFINITION,

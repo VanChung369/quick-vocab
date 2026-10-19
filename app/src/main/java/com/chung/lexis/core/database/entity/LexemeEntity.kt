@@ -45,10 +45,3 @@ data class LexemeEntity(
 
     val retryAfterEpochMillis: Long? = null,
 )
-
-enum class EnrichmentStatusColumn {
-    PENDING,
-    ENRICHING,
-    READY,
-    FAILED,
-}
