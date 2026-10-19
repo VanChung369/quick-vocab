@@ -2,6 +2,7 @@ package com.chung.lexis.core.database.entity
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "example_translations",
@@ -17,7 +18,7 @@ import androidx.room.ForeignKey
 )
 data class ExampleTranslationEntity(
 
-    @androidx.room.PrimaryKey
+    @PrimaryKey
     val exampleId: Long,
 
     val text: String,
