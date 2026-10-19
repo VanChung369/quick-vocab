@@ -19,26 +19,10 @@ import androidx.room.PrimaryKey
 
     indices = [
         Index(
-            value = ["lexemeId"],
-        ),
-
-        Index(
             value = [
                 "lexemeId",
                 "sortOrder",
             ],
-        ),
-
-        /*
-         * Required so Pronunciation / Example can reference
-         * (meaningId, lexemeId) together.
-         */
-        Index(
-            value = [
-                "id",
-                "lexemeId",
-            ],
-            unique = true,
         ),
     ],
 )

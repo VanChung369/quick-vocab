@@ -9,7 +9,6 @@ import androidx.room.PrimaryKey
     tableName = "examples",
 
     foreignKeys = [
-
         ForeignKey(
             entity = LexemeEntity::class,
             parentColumns = ["id"],
@@ -19,30 +18,15 @@ import androidx.room.PrimaryKey
 
         ForeignKey(
             entity = MeaningEntity::class,
-            parentColumns = [
-                "id",
-                "lexemeId",
-            ],
-            childColumns = [
-                "meaningId",
-                "lexemeId",
-            ],
-            onDelete = ForeignKey.CASCADE,
+            parentColumns = ["id"],
+            childColumns = ["meaningId"],
+            onDelete = ForeignKey.SET_NULL,
         ),
     ],
 
     indices = [
-
-        Index(
-            value = ["lexemeId"],
-        ),
-
-        Index(
-            value = [
-                "meaningId",
-                "lexemeId",
-            ],
-        ),
+        Index(value = ["lexemeId"]),
+        Index(value = ["meaningId"]),
     ],
 )
 data class ExampleEntity(
