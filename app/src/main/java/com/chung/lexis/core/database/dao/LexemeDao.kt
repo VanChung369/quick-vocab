@@ -29,7 +29,7 @@ interface LexemeDao {
     @Update
     suspend fun updateLexeme(
         lexeme: LexemeEntity,
-    )
+    ): Int
 
     @Query(
         """
@@ -146,7 +146,7 @@ interface LexemeDao {
     @Update
     suspend fun updateExample(
         example: ExampleEntity,
-    )
+    ): Int
 
     @Query(
         """

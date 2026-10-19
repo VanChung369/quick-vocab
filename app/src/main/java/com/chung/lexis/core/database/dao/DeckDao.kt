@@ -19,7 +19,7 @@ interface DeckDao {
     @Update
     suspend fun updateDeck(
         deck: DeckEntity,
-    )
+    ): Int
 
     @Query(
         """
