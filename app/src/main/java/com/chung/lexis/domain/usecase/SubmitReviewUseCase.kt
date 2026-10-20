@@ -51,6 +51,21 @@ class SubmitReviewUseCase(
             "scheduledDays must match progress"
         }
 
+        require(schedule.elapsedDays >= 0) {
+            "elapsedDays must be >= 0"
+        }
+
+        require(schedule.scheduledDays >= 0) {
+            "scheduledDays must be >= 0"
+        }
+
+        require(
+            schedule.progress.reviewCount ==
+                    current.reviewCount + 1
+        ) {
+            "Scheduler must increment reviewCount exactly once"
+        }
+
         val reviewLog =
             ReviewLog(
                 lexemeId = lexemeId,
