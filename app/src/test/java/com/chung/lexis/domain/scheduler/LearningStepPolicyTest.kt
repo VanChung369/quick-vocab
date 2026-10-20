@@ -145,13 +145,51 @@ class LearningStepPolicyTest {
         )
     }
 
-    @Test(expected = IllegalStateException::class)
+    @Test(expected = IllegalArgumentException::class)
     fun `review state cannot use learning steps`() {
 
         policy.decide(
             phase = ReviewState.REVIEW,
             currentStep = null,
             rating = ReviewRating.GOOD,
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `new state must not have a current step`() {
+
+        policy.decide(
+            phase = ReviewState.NEW,
+            currentStep = 1,
+            rating = ReviewRating.GOOD,
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `current step must be inside configured steps`() {
+
+        policy.decide(
+            phase = ReviewState.LEARNING,
+            currentStep = 99,
+            rating = ReviewRating.GOOD,
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `learning steps cannot be empty`() {
+
+        LearningStepPolicy(
+            learningSteps = emptyList(),
+            relearningSteps = listOf(Duration.ofMinutes(10)),
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `steps must be positive`() {
+
+        LearningStepPolicy(
+            learningSteps = listOf(Duration.ZERO),
+            relearningSteps = listOf(Duration.ofMinutes(10)),
         )
     }
 }

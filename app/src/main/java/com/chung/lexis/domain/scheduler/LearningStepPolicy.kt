@@ -43,20 +43,21 @@ class LearningStepPolicy(
         rating: ReviewRating,
     ): LearningStepDecision {
 
+        require(phase != ReviewState.REVIEW) {
+            "REVIEW does not use learning steps"
+        }
+
+        if (phase == ReviewState.NEW) {
+            require(currentStep == null) {
+                "NEW state must not have a current step"
+            }
+        }
+
         val steps =
-            when (phase) {
-
-                ReviewState.NEW,
-                ReviewState.LEARNING ->
-                    learningSteps
-
-                ReviewState.RELEARNING ->
-                    relearningSteps
-
-                ReviewState.REVIEW ->
-                    error(
-                        "REVIEW does not use learning steps"
-                    )
+            if (phase == ReviewState.RELEARNING) {
+                relearningSteps
+            } else {
+                learningSteps
             }
 
         validateCurrentStep(
