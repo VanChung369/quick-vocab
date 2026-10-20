@@ -101,4 +101,22 @@ class ReviewStateMachineTest {
 
         assertFalse(result.isLapse)
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `learningStepCompleted is invalid for easy`() {
+        machine.transition(
+            currentState = ReviewState.LEARNING,
+            rating = ReviewRating.EASY,
+            learningStepCompleted = true,
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `learningStepCompleted is invalid in review`() {
+        machine.transition(
+            currentState = ReviewState.REVIEW,
+            rating = ReviewRating.GOOD,
+            learningStepCompleted = true,
+        )
+    }
 }
