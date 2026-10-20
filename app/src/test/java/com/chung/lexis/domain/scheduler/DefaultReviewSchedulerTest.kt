@@ -145,6 +145,30 @@ class DefaultReviewSchedulerTest {
     }
 
     @Test
+    fun `relearning again does not count another lapse`() {
+
+        val result =
+            scheduler.schedule(
+                current = LearningProgress(
+                    lexemeId = 1L,
+                    state = ReviewState.RELEARNING,
+                    step = 0,
+                    lapseCount = 1,
+                    lastReviewedAt = now.minus(Duration.ofMinutes(10)),
+                ),
+                rating = ReviewRating.AGAIN,
+                reviewedAt = now,
+            )
+
+        val progress = result.progress
+
+        assertEquals(ReviewState.RELEARNING, progress.state)
+        assertEquals(0, progress.step)
+        assertEquals(now.plus(Duration.ofMinutes(10)), progress.nextReviewAt)
+        assertEquals(1, progress.lapseCount)
+    }
+
+    @Test
     fun `good on last relearning step graduates to review`() {
 
         val result =
