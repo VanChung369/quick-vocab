@@ -25,8 +25,7 @@ class SubmitReviewUseCase(
 
         current.lastReviewedAt?.let { lastReviewedAt ->
             require(
-                reviewedAt.toEpochMilli() >=
-                        lastReviewedAt.toEpochMilli()
+                reviewedAt.toEpochMilli() >= lastReviewedAt.toEpochMilli()
             ) {
                 "reviewedAt cannot be before lastReviewedAt"
             }
@@ -39,13 +38,18 @@ class SubmitReviewUseCase(
                 reviewedAt = reviewedAt,
             )
 
-        schedule.progress.nextReviewAt?.let { nextReviewAt ->
-            require(
-                nextReviewAt.toEpochMilli() >=
-                        reviewedAt.toEpochMilli()
+        val nextReviewAt =
+            requireNotNull(
+                schedule.progress.nextReviewAt
             ) {
-                "nextReviewAt cannot be before reviewedAt"
+                "Scheduler must set nextReviewAt"
             }
+
+        require(
+            nextReviewAt.toEpochMilli() >=
+                    reviewedAt.toEpochMilli()
+        ) {
+            "nextReviewAt cannot be before reviewedAt"
         }
 
         require(
