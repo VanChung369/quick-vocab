@@ -22,12 +22,31 @@ class SubmitReviewUseCase(
             reviewRepository.getProgress(lexemeId)
                 ?: return SaveReviewResult.LexemeNotFound
 
+
+        current.lastReviewedAt?.let { lastReviewedAt ->
+            require(
+                reviewedAt.toEpochMilli() >=
+                        lastReviewedAt.toEpochMilli()
+            ) {
+                "reviewedAt cannot be before lastReviewedAt"
+            }
+        }
+
         val schedule =
             reviewScheduler.schedule(
                 current = current,
                 rating = rating,
                 reviewedAt = reviewedAt,
             )
+
+        schedule.progress.nextReviewAt?.let { nextReviewAt ->
+            require(
+                nextReviewAt.toEpochMilli() >=
+                        reviewedAt.toEpochMilli()
+            ) {
+                "nextReviewAt cannot be before reviewedAt"
+            }
+        }
 
         require(
             schedule.progress.lexemeId ==
