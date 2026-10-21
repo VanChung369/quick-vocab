@@ -4,8 +4,10 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Upsert
+import com.chung.lexis.core.database.entity.EnrichmentStatusColumn
 import com.chung.lexis.core.database.entity.LearningProgressEntity
 import com.chung.lexis.core.database.entity.ReviewLogEntity
+import com.chung.lexis.core.database.entity.ReviewStateColumn
 
 @Dao
 interface ReviewDao {
@@ -43,4 +45,90 @@ interface ReviewDao {
     suspend fun getReviewHistory(
         lexemeId: Long,
     ): List<ReviewLogEntity>
+
+
+    @Query(
+        """
+    SELECT p.*
+    FROM learning_progress AS p
+    WHERE p.state IN (
+        :learningState,
+        :relearningState
+    )
+      AND p.nextReviewAtEpochMillis IS NOT NULL
+      AND p.nextReviewAtEpochMillis <= :nowEpochMillis
+      AND EXISTS (
+          SELECT 1
+          FROM deck_items AS di
+          WHERE di.lexemeId = p.lexemeId
+      )
+    ORDER BY
+        p.nextReviewAtEpochMillis ASC,
+        p.lexemeId ASC
+    LIMIT :limit
+    """
+    )
+    suspend fun getDueShortTerm(
+        nowEpochMillis: Long,
+        learningState: ReviewStateColumn,
+        relearningState: ReviewStateColumn,
+        limit: Int,
+    ): List<LearningProgressEntity>
+
+
+    @Query(
+        """
+    SELECT p.*
+    FROM learning_progress AS p
+    WHERE p.state = :reviewState
+      AND p.nextReviewAtEpochMillis IS NOT NULL
+      AND p.nextReviewAtEpochMillis <= :nowEpochMillis
+      AND EXISTS (
+          SELECT 1
+          FROM deck_items AS di
+          WHERE di.lexemeId = p.lexemeId
+      )
+    ORDER BY
+        p.nextReviewAtEpochMillis ASC,
+        p.lexemeId ASC
+    LIMIT :limit
+    """
+    )
+    suspend fun getDueReview(
+        nowEpochMillis: Long,
+        reviewState: ReviewStateColumn,
+        limit: Int,
+    ): List<LearningProgressEntity>
+    
+    @Query(
+        """
+    SELECT l.id
+    FROM lexemes AS l
+
+    INNER JOIN deck_items AS di
+        ON di.lexemeId = l.id
+
+    LEFT JOIN learning_progress AS p
+        ON p.lexemeId = l.id
+
+    WHERE l.enrichmentStatus = :readyStatus
+      AND (
+          p.lexemeId IS NULL
+          OR p.state = :newState
+      )
+
+    GROUP BY l.id
+
+    ORDER BY
+        MIN(di.addedAtEpochMillis) ASC,
+        l.id ASC
+
+    LIMIT :limit
+    """
+    )
+    suspend fun getNewLexemeIds(
+        readyStatus: EnrichmentStatusColumn,
+        newState: ReviewStateColumn,
+        limit: Int,
+    ): List<Long>
 }

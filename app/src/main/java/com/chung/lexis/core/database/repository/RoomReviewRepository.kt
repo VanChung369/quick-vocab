@@ -2,12 +2,15 @@ package com.chung.lexis.core.database.repository
 
 import androidx.room.withTransaction
 import com.chung.lexis.core.database.LexisDatabase
+import com.chung.lexis.core.database.entity.EnrichmentStatusColumn
+import com.chung.lexis.core.database.entity.ReviewStateColumn
 import com.chung.lexis.core.database.mapper.toDomain
 import com.chung.lexis.core.database.mapper.toEntity
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewLog
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
+import java.time.Instant
 
 class RoomReviewRepository(
     private val database: LexisDatabase,
@@ -174,6 +177,114 @@ class RoomReviewRepository(
         ) {
             "nextProgress.lastReviewedAt must match " +
                     "ReviewLog.reviewedAt"
+        }
+    }
+
+    override suspend fun getReviewQueue(
+        now: Instant,
+        dueLimit: Int,
+        newLimit: Int,
+    ): List<LearningProgress> {
+
+        require(dueLimit >= 0) {
+            "dueLimit must be >= 0"
+        }
+
+        require(newLimit >= 0) {
+            "newLimit must be >= 0"
+        }
+
+        return database.withTransaction {
+
+            val nowEpochMillis =
+                now.toEpochMilli()
+
+            val shortTerm =
+                if (dueLimit == 0) {
+                    emptyList()
+                } else {
+                    reviewDao.getDueShortTerm(
+                        nowEpochMillis =
+                            nowEpochMillis,
+
+                        learningState =
+                            ReviewStateColumn.LEARNING,
+
+                        relearningState =
+                            ReviewStateColumn.RELEARNING,
+
+                        limit =
+                            dueLimit,
+                    )
+                }
+
+            /*
+             * Short-term cards get first priority.
+             *
+             * REVIEW only receives the remaining slots.
+             */
+            val reviewSlots =
+                dueLimit -
+                        shortTerm.size
+
+            val review =
+                if (reviewSlots == 0) {
+                    emptyList()
+                } else {
+                    reviewDao.getDueReview(
+                        nowEpochMillis =
+                            nowEpochMillis,
+
+                        reviewState =
+                            ReviewStateColumn.REVIEW,
+
+                        limit =
+                            reviewSlots,
+                    )
+                }
+
+            val newLexemeIds =
+                if (newLimit == 0) {
+                    emptyList()
+                } else {
+                    reviewDao.getNewLexemeIds(
+                        readyStatus =
+                            EnrichmentStatusColumn.READY,
+
+                        newState =
+                            ReviewStateColumn.NEW,
+
+                        limit =
+                            newLimit,
+                    )
+                }
+
+            buildList {
+
+                addAll(
+                    shortTerm.map { entity ->
+                        entity.toDomain()
+                    }
+                )
+
+                addAll(
+                    review.map { entity ->
+                        entity.toDomain()
+                    }
+                )
+
+                /*
+                 * Missing LearningProgress row is
+                 * intentionally represented as logical NEW.
+                 */
+                addAll(
+                    newLexemeIds.map { lexemeId ->
+                        LearningProgress(
+                            lexemeId = lexemeId,
+                        )
+                    }
+                )
+            }
         }
     }
 }
