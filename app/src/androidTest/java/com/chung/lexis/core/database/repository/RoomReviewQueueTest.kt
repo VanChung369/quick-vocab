@@ -1,4 +1,4 @@
-package com.chung.lexis.database.core.repository
+package com.chung.lexis.core.database.repository
 
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -10,7 +10,6 @@ import com.chung.lexis.core.database.entity.EnrichmentStatusColumn
 import com.chung.lexis.core.database.entity.LearningProgressEntity
 import com.chung.lexis.core.database.entity.LexemeEntity
 import com.chung.lexis.core.database.entity.ReviewStateColumn
-import com.chung.lexis.core.database.repository.RoomReviewRepository
 import com.chung.lexis.domain.model.ReviewState
 import kotlinx.coroutines.runBlocking
 import org.junit.After
