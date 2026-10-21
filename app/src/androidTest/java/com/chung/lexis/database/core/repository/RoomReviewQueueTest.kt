@@ -1,4 +1,4 @@
-package com.chung.lexis.repository
+package com.chung.lexis.database.core.repository
 
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -695,6 +695,146 @@ class RoomReviewQueueTest {
                 )
             )
     }
+
+    @Test
+    fun reviewDueSummaryCountsRealDueCardsWithoutSessionLimits() =
+        runBlocking {
+
+            val deck1 =
+                insertDeck("English")
+
+            val deck2 =
+                insertDeck("IELTS")
+
+            val learning =
+                insertLexeme("learning")
+
+            val review =
+                insertLexeme("review")
+
+            val future =
+                insertLexeme("future")
+
+            val newReady =
+                insertLexeme("new-ready")
+
+            val newPending =
+                insertLexeme(
+                    text = "new-pending",
+                    enrichmentStatus =
+                        EnrichmentStatusColumn.PENDING,
+                )
+
+            val orphan =
+                insertLexeme("orphan")
+
+            /*
+             * Same LEARNING lexeme exists in two decks.
+             * Summary must still count it once.
+             */
+            addToDeck(
+                deckId = deck1,
+                lexemeId = learning,
+            )
+
+            addToDeck(
+                deckId = deck2,
+                lexemeId = learning,
+            )
+
+            addToDeck(
+                deckId = deck1,
+                lexemeId = review,
+            )
+
+            addToDeck(
+                deckId = deck1,
+                lexemeId = future,
+            )
+
+            addToDeck(
+                deckId = deck1,
+                lexemeId = newReady,
+            )
+
+            addToDeck(
+                deckId = deck1,
+                lexemeId = newPending,
+            )
+
+            insertProgress(
+                lexemeId = learning,
+                state =
+                    ReviewStateColumn.LEARNING,
+                step = 0,
+                dueAt =
+                    now.minus(
+                        Duration.ofMinutes(1)
+                    ),
+            )
+
+            insertProgress(
+                lexemeId = review,
+                state =
+                    ReviewStateColumn.REVIEW,
+                dueAt =
+                    now.minus(
+                        Duration.ofDays(1)
+                    ),
+            )
+
+            insertProgress(
+                lexemeId = future,
+                state =
+                    ReviewStateColumn.REVIEW,
+                dueAt =
+                    now.plus(
+                        Duration.ofDays(1)
+                    ),
+            )
+
+            /*
+             * Has progress but no DeckItem.
+             */
+            insertProgress(
+                lexemeId = orphan,
+                state =
+                    ReviewStateColumn.REVIEW,
+                dueAt =
+                    now.minus(
+                        Duration.ofDays(3)
+                    ),
+            )
+
+            val summary =
+                repository
+                    .getReviewDueSummary(now)
+
+            assertEquals(
+                1,
+                summary.shortTermDue,
+            )
+
+            assertEquals(
+                1,
+                summary.reviewDue,
+            )
+
+            assertEquals(
+                1,
+                summary.newAvailable,
+            )
+
+            assertEquals(
+                2,
+                summary.dueCount,
+            )
+
+            assertEquals(
+                3,
+                summary.totalAvailable,
+            )
+        }
 
     companion object {
         private const val LANGUAGE_TAG =

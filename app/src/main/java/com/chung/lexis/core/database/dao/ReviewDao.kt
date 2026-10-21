@@ -99,7 +99,7 @@ interface ReviewDao {
         reviewState: ReviewStateColumn,
         limit: Int,
     ): List<LearningProgressEntity>
-    
+
     @Query(
         """
     SELECT l.id
@@ -131,4 +131,69 @@ interface ReviewDao {
         newState: ReviewStateColumn,
         limit: Int,
     ): List<Long>
+
+    @Query(
+        """
+    SELECT COUNT(*)
+    FROM learning_progress AS p
+    WHERE p.state IN (
+        :learningState,
+        :relearningState
+    )
+      AND p.nextReviewAtEpochMillis IS NOT NULL
+      AND p.nextReviewAtEpochMillis <= :nowEpochMillis
+      AND EXISTS (
+          SELECT 1
+          FROM deck_items AS di
+          WHERE di.lexemeId = p.lexemeId
+      )
+    """
+    )
+    suspend fun countDueShortTerm(
+        nowEpochMillis: Long,
+        learningState: ReviewStateColumn,
+        relearningState: ReviewStateColumn,
+    ): Int
+
+    @Query(
+        """
+    SELECT COUNT(*)
+    FROM learning_progress AS p
+    WHERE p.state = :reviewState
+      AND p.nextReviewAtEpochMillis IS NOT NULL
+      AND p.nextReviewAtEpochMillis <= :nowEpochMillis
+      AND EXISTS (
+          SELECT 1
+          FROM deck_items AS di
+          WHERE di.lexemeId = p.lexemeId
+      )
+    """
+    )
+    suspend fun countDueReview(
+        nowEpochMillis: Long,
+        reviewState: ReviewStateColumn,
+    ): Int
+
+    @Query(
+        """
+    SELECT COUNT(DISTINCT l.id)
+    FROM lexemes AS l
+
+    INNER JOIN deck_items AS di
+        ON di.lexemeId = l.id
+
+    LEFT JOIN learning_progress AS p
+        ON p.lexemeId = l.id
+
+    WHERE l.enrichmentStatus = :readyStatus
+      AND (
+          p.lexemeId IS NULL
+          OR p.state = :newState
+      )
+    """
+    )
+    suspend fun countNewAvailable(
+        readyStatus: EnrichmentStatusColumn,
+        newState: ReviewStateColumn,
+    ): Int
 }

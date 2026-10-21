@@ -1,12 +1,13 @@
 package com.chung.lexis.domain.repository
 
 import com.chung.lexis.domain.model.LearningProgress
+import com.chung.lexis.domain.model.ReviewDueSummary
 import com.chung.lexis.domain.model.ReviewLog
 import java.time.Instant
 
 interface ReviewRepository {
     suspend fun getProgress(
-        lexemeId: Long
+        lexemeId: Long,
     ): LearningProgress?
 
     suspend fun getReviewQueue(
@@ -14,6 +15,10 @@ interface ReviewRepository {
         dueLimit: Int,
         newLimit: Int,
     ): List<LearningProgress>
+
+    suspend fun getReviewDueSummary(
+        now: Instant,
+    ): ReviewDueSummary
 
     suspend fun saveReview(
         previousProgress: LearningProgress,

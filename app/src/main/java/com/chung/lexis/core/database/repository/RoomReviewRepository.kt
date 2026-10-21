@@ -7,6 +7,7 @@ import com.chung.lexis.core.database.entity.ReviewStateColumn
 import com.chung.lexis.core.database.mapper.toDomain
 import com.chung.lexis.core.database.mapper.toEntity
 import com.chung.lexis.domain.model.LearningProgress
+import com.chung.lexis.domain.model.ReviewDueSummary
 import com.chung.lexis.domain.model.ReviewLog
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
@@ -287,4 +288,54 @@ class RoomReviewRepository(
             }
         }
     }
+
+    override suspend fun getReviewDueSummary(
+        now: Instant,
+    ): ReviewDueSummary =
+        database.withTransaction {
+
+            val nowEpochMillis =
+                now.toEpochMilli()
+
+            val shortTermDue =
+                reviewDao.countDueShortTerm(
+                    nowEpochMillis =
+                        nowEpochMillis,
+
+                    learningState =
+                        ReviewStateColumn.LEARNING,
+
+                    relearningState =
+                        ReviewStateColumn.RELEARNING,
+                )
+
+            val reviewDue =
+                reviewDao.countDueReview(
+                    nowEpochMillis =
+                        nowEpochMillis,
+
+                    reviewState =
+                        ReviewStateColumn.REVIEW,
+                )
+
+            val newAvailable =
+                reviewDao.countNewAvailable(
+                    readyStatus =
+                        EnrichmentStatusColumn.READY,
+
+                    newState =
+                        ReviewStateColumn.NEW,
+                )
+
+            ReviewDueSummary(
+                shortTermDue =
+                    shortTermDue,
+
+                reviewDue =
+                    reviewDue,
+
+                newAvailable =
+                    newAvailable,
+            )
+        }
 }
