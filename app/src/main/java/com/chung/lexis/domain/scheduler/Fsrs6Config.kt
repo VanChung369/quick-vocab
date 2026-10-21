@@ -35,10 +35,40 @@ class Fsrs6Config(
             "FSRS decay parameter must be > 0"
         }
 
+        require(parameters.size == LOWER_BOUNDS.size)
+
+        parameters.forEachIndexed { index, value ->
+            require(
+                value in LOWER_BOUNDS[index]..UPPER_BOUNDS[index]
+            ) {
+                "parameters[$index]=$value is outside FSRS-6 bounds " +
+                        "[${LOWER_BOUNDS[index]}, ${UPPER_BOUNDS[index]}]"
+            }
+        }
+
     }
 
     companion object {
 
+        val LOWER_BOUNDS =
+            listOf(
+                0.001, 0.001, 0.001, 0.001,
+                1.0, 0.001, 0.001, 0.001,
+                0.0, 0.0, 0.001, 0.001,
+                0.001, 0.001, 0.0, 0.0,
+                1.0, 0.0, 0.0, 0.0,
+                0.1,
+            )
+
+        val UPPER_BOUNDS =
+            listOf(
+                100.0, 100.0, 100.0, 100.0,
+                10.0, 4.0, 4.0, 0.75,
+                4.5, 0.8, 3.5, 5.0,
+                0.25, 0.9, 4.0, 1.0,
+                6.0, 2.0, 2.0, 0.8,
+                0.8,
+            )
         val DEFAULT_PARAMETERS =
             listOf(
                 0.212,

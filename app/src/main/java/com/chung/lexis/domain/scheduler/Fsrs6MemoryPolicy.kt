@@ -2,6 +2,7 @@ package com.chung.lexis.domain.scheduler
 
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewRating
+import com.chung.lexis.domain.model.ReviewState
 import kotlin.math.E
 import kotlin.math.exp
 import kotlin.math.max
@@ -44,6 +45,15 @@ class Fsrs6MemoryPolicy(
                     (current.difficulty == null)
         ) {
             "stability and difficulty must both be null or both be set"
+        }
+
+        if (current.state != ReviewState.NEW) {
+            require(
+                current.stability != null &&
+                        current.difficulty != null
+            ) {
+                "${current.state} must have FSRS memory state"
+            }
         }
 
         val grade =
