@@ -122,7 +122,7 @@ class Fsrs6MemoryPolicyTest {
     }
 
     @Test
-    fun `short term hard can decrease stability`() {
+    fun `short term hard does not decrease stability`() {
 
         val result =
             Fsrs6MemoryPolicy()
@@ -133,7 +133,7 @@ class Fsrs6MemoryPolicyTest {
                 )
 
         assertEquals(
-            1.3333787168039835,
+            2.3065,
             result.stability,
             1e-9,
         )
@@ -145,7 +145,7 @@ class Fsrs6MemoryPolicyTest {
         )
 
         assertEquals(
-            1,
+            2,
             result.intervalDays,
         )
     }

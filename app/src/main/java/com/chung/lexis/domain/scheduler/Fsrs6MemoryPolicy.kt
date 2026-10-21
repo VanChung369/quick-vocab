@@ -274,10 +274,10 @@ class Fsrs6MemoryPolicy(
                     )
 
         /*
-         * Good / Easy must not decrease stability
-         * on short-term review. Hard may decrease it.
+         * Hard / Good / Easy must not
+         * decrease stability on short-term review.
          */
-        if (grade >= 3) {
+        if (grade >= 2) {
             increase =
                 max(
                     increase,
