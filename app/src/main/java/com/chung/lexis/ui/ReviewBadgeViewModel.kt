@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.chung.lexis.domain.repository.ReviewRepository
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 
@@ -32,46 +35,59 @@ class ReviewBadgeViewModel(
             StateFlow<ReviewBadgeUiState> =
         _uiState.asStateFlow()
 
-    init {
-        refresh()
-    }
+    private var refreshJob:
+            Job? = null
 
     fun refresh() {
+        refreshJob?.cancel()
 
-        viewModelScope.launch {
+        refreshJob =
+            viewModelScope.launch {
 
-            val previous =
-                _uiState.value
+                _uiState.update { state ->
+                    state.copy(
+                        isLoading = true,
+                    )
+                }
 
-            _uiState.value =
-                previous.copy(
-                    isLoading = true,
-                )
+                try {
 
-            try {
+                    val summary =
+                        reviewRepository
+                            .getReviewDueSummary(
+                                now =
+                                    clock.instant(),
+                            )
 
-                val summary =
-                    reviewRepository
-                        .getReviewDueSummary(
-                            now =
-                                clock.instant(),
+                    _uiState.value =
+                        ReviewBadgeUiState(
+                            dueCount =
+                                summary.dueCount,
+
+                            isLoading =
+                                false,
                         )
 
-                _uiState.value =
-                    ReviewBadgeUiState(
-                        dueCount =
-                            summary.dueCount,
+                } catch (
+                    cancellation:
+                    CancellationException,
+                ) {
+                    throw cancellation
 
-                        isLoading = false,
-                    )
+                } catch (_: Exception) {
 
-            } catch (_: Exception) {
-                _uiState.value =
-                    previous.copy(
-                        isLoading = false,
-                    )
+                    /*
+                     * Không restore một snapshot "previous"
+                     * cũ vì request khác có thể đã update
+                     * dueCount mới hơn.
+                     */
+                    _uiState.update { state ->
+                        state.copy(
+                            isLoading = false,
+                        )
+                    }
+                }
             }
-        }
     }
 
     class Factory(
