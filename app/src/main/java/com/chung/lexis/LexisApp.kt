@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.chung.lexis.feature.review.ReviewSessionViewModel
 import com.chung.lexis.navigation.LexisBottomBar
 import com.chung.lexis.navigation.LexisNavHost
 import com.chung.lexis.ui.ReviewBadgeViewModel
@@ -16,6 +17,9 @@ import com.chung.lexis.ui.ReviewBadgeViewModel
 fun LexisApp(
     reviewBadgeViewModel:
     ReviewBadgeViewModel,
+
+    reviewSessionViewModel:
+    ReviewSessionViewModel,
 ) {
 
     val navController =
@@ -46,6 +50,9 @@ fun LexisApp(
         LexisNavHost(
             navController =
                 navController,
+
+            reviewSessionViewModel =
+                reviewSessionViewModel,
 
             modifier =
                 Modifier.padding(

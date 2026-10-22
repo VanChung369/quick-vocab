@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
+import com.chung.lexis.feature.review.ReviewSessionViewModel
 import com.chung.lexis.ui.ReviewBadgeViewModel
 import com.chung.lexis.ui.theme.LexisTheme
 
@@ -31,6 +32,30 @@ class MainActivity :
         )[ReviewBadgeViewModel::class.java]
     }
 
+    private val reviewSessionViewModel:
+            ReviewSessionViewModel by lazy {
+
+        val application =
+            application as LexisApplication
+
+        val container =
+            application.appContainer
+
+        val factory =
+            ReviewSessionViewModel.Factory(
+                reviewRepository =
+                    container.reviewRepository,
+
+                submitReviewUseCase =
+                    container.submitReviewUseCase,
+            )
+
+        ViewModelProvider(
+            this,
+            factory,
+        )[ReviewSessionViewModel::class.java]
+    }
+
     override fun onCreate(
         savedInstanceState: Bundle?,
     ) {
@@ -47,6 +72,9 @@ class MainActivity :
                 LexisApp(
                     reviewBadgeViewModel =
                         reviewBadgeViewModel,
+
+                    reviewSessionViewModel =
+                        reviewSessionViewModel,
                 )
             }
         }

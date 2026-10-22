@@ -10,12 +10,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.chung.lexis.feature.decks.DecksScreen
 import com.chung.lexis.feature.home.HomeScreen
-import com.chung.lexis.feature.review.ReviewScreen
+import com.chung.lexis.feature.review.ReviewRoute
+import com.chung.lexis.feature.review.ReviewSessionViewModel
 
 
 @Composable
 fun LexisNavHost(
     navController: NavHostController,
+    reviewSessionViewModel: ReviewSessionViewModel,
     modifier: Modifier = Modifier
 ) {
 
@@ -42,7 +44,9 @@ fun LexisNavHost(
         composable(
             route = LexisDestination.Review.route,
         ) {
-            ReviewScreen()
+            ReviewRoute(
+                viewModel = reviewSessionViewModel,
+            )
         }
     }
 }
