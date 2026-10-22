@@ -17,8 +17,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -29,6 +33,7 @@ import org.junit.Test
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -39,9 +44,22 @@ class ReviewSessionViewModelTest {
 
     private lateinit var fakeRepository: FakeReviewRepository
 
+    private val testDispatcher =
+        StandardTestDispatcher()
+
+    /*
+     * Clock chạy theo virtual time của test scheduler,
+     * để advanceTimeBy() / delay() khớp với clock.instant().
+     */
+    private val clock =
+        SchedulerClock(
+            scheduler = testDispatcher.scheduler,
+            base = now,
+        )
+
     @Before
     fun setUp() {
-        Dispatchers.setMain(StandardTestDispatcher())
+        Dispatchers.setMain(testDispatcher)
     }
 
     @After
@@ -120,6 +138,199 @@ class ReviewSessionViewModelTest {
             )
         }
 
+    @Test
+    fun dueShortTermRepeatComesBeforePendingNewCard() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                            progress(C),
+                            progress(D),
+                        ),
+                    cards =
+                        listOf(A, B, C, D)
+                            .associateWith { card(it) },
+                    failCardIds =
+                        emptySet(),
+                )
+
+            viewModel.startSession(
+                dueLimit = 10,
+                newLimit = 10,
+            )
+
+            advanceUntilIdle()
+
+            assertActiveCard(A, viewModel)
+
+            /*
+             * A → GOOD → LEARNING, due +1m.
+             */
+            rateGood(viewModel)
+
+            assertActiveCard(B, viewModel)
+
+            /*
+             * User ở card B/C hơn 1 phút.
+             */
+            advanceTimeBy(30_000L)
+
+            rateGood(viewModel)
+
+            assertActiveCard(C, viewModel)
+
+            advanceTimeBy(31_000L)
+
+            rateGood(viewModel)
+
+            /*
+             * A đã due (+1m) → SHORT_TERM
+             * phải đứng trước D (NEW).
+             */
+            assertActiveCard(A, viewModel)
+
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+        }
+
+    @Test
+    fun shortTermRequeueNeverRequeriesGlobalQueue() =
+        runTest {
+
+            /*
+             * Repository đã trả đúng newLimit = 2.
+             * NEW #3 tồn tại nhưng nằm ngoài budget.
+             */
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                        ),
+                    cards =
+                        listOf(A, B, C)
+                            .associateWith { card(it) },
+                    failCardIds =
+                        emptySet(),
+                )
+
+            viewModel.startSession(
+                dueLimit = 10,
+                newLimit = 2,
+            )
+
+            advanceUntilIdle()
+
+            assertActiveCard(A, viewModel)
+
+            rateGood(viewModel)
+
+            assertActiveCard(B, viewModel)
+
+            rateGood(viewModel)
+
+            /*
+             * Không còn card ready,
+             * nhưng A/B còn learning step.
+             */
+            assertEquals(
+                ReviewSessionUiState.Waiting(
+                    nextDueAt =
+                        now.plus(
+                            Duration.ofMinutes(1)
+                        ),
+                    reviewedCount = 2,
+                    remainingCount = 2,
+                ),
+                viewModel.uiState.value,
+            )
+
+            /*
+             * Timer tới hạn → A short-term requeue.
+             */
+            advanceUntilIdle()
+
+            assertActiveCard(A, viewModel)
+
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            /*
+             * LEARNING → REVIEW: A rời session.
+             */
+            rateGood(viewModel)
+
+            assertActiveCard(B, viewModel)
+
+            rateGood(viewModel)
+
+            assertEquals(
+                ReviewSessionUiState.Completed(
+                    reviewedCount = 4,
+                ),
+                viewModel.uiState.value,
+            )
+
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            /*
+             * NEW #3 không bao giờ chui vào.
+             */
+            assertTrue(
+                C !in
+                        fakeRepository
+                            .requestedCardIds
+            )
+        }
+
+    private fun TestScope.rateGood(
+        viewModel: ReviewSessionViewModel,
+    ) {
+
+        viewModel.revealAnswer()
+
+        viewModel.submitRating(
+            ReviewRating.GOOD
+        )
+
+        /*
+         * Không advanceUntilIdle(): nó sẽ nhảy
+         * virtual time qua luôn timer của Waiting.
+         */
+        runCurrent()
+    }
+
+    private fun assertActiveCard(
+        expectedLexemeId: Long,
+        viewModel: ReviewSessionViewModel,
+    ) {
+
+        val state =
+            viewModel.uiState.value
+
+        assertTrue(
+            "Expected Active($expectedLexemeId) but was $state",
+            state is ReviewSessionUiState.Active &&
+                    state.card.lexeme.id ==
+                    expectedLexemeId
+        )
+    }
+
     private fun createViewModel(
         queue: List<LearningProgress>,
         cards: Map<Long, ReviewCard>,
@@ -147,10 +358,7 @@ class ReviewSessionViewModelTest {
                 ),
 
             clock =
-                Clock.fixed(
-                    now,
-                    ZoneOffset.UTC,
-                ),
+                clock,
         )
     }
 
@@ -192,6 +400,13 @@ class ReviewSessionViewModelTest {
         var saveReviewCallCount = 0
             private set
 
+        var getReviewQueueCallCount =
+            0
+            private set
+
+        val requestedCardIds =
+            mutableListOf<Long>()
+
         override suspend fun getProgress(
             lexemeId: Long,
         ): LearningProgress? =
@@ -201,8 +416,12 @@ class ReviewSessionViewModelTest {
             now: Instant,
             dueLimit: Int,
             newLimit: Int,
-        ): List<LearningProgress> =
-            queue
+        ): List<LearningProgress> {
+
+            getReviewQueueCallCount += 1
+
+            return queue
+        }
 
         override suspend fun getReviewDueSummary(
             now: Instant,
@@ -240,6 +459,8 @@ class ReviewSessionViewModelTest {
             lexemeId: Long,
         ): ReviewCard? {
 
+            requestedCardIds += lexemeId
+
             if (lexemeId in failCardIds) {
                 throw IllegalStateException(
                     "Cannot hydrate $lexemeId"
@@ -250,6 +471,10 @@ class ReviewSessionViewModelTest {
         }
     }
 
+    /*
+     * NEW      → LEARNING step 0, +1m
+     * LEARNING → REVIEW, +1d
+     */
     private class FakeReviewScheduler : ReviewScheduler {
 
         override fun schedule(
@@ -257,21 +482,71 @@ class ReviewSessionViewModelTest {
             rating: ReviewRating,
             reviewedAt: Instant,
         ): ReviewSchedule =
-            ReviewSchedule(
-                progress =
-                    current.copy(
-                        state = ReviewState.LEARNING,
-                        step = current.step?.plus(1) ?: 0,
-                        reviewCount = current.reviewCount + 1,
-                        scheduledDays = 0,
-                        lastReviewedAt = reviewedAt,
-                        nextReviewAt =
-                            reviewedAt.plus(
-                                Duration.ofMinutes(1)
+            when (current.state) {
+
+                ReviewState.NEW ->
+                    ReviewSchedule(
+                        progress =
+                            current.copy(
+                                state = ReviewState.LEARNING,
+                                step = 0,
+                                reviewCount = current.reviewCount + 1,
+                                scheduledDays = 0,
+                                lastReviewedAt = reviewedAt,
+                                nextReviewAt =
+                                    reviewedAt.plus(
+                                        Duration.ofMinutes(1)
+                                    ),
                             ),
-                    ),
-                elapsedDays = 0,
-                scheduledDays = 0,
+                        elapsedDays = 0,
+                        scheduledDays = 0,
+                    )
+
+                ReviewState.LEARNING,
+                ReviewState.RELEARNING,
+                ReviewState.REVIEW ->
+                    ReviewSchedule(
+                        progress =
+                            current.copy(
+                                state = ReviewState.REVIEW,
+                                step = null,
+                                reviewCount = current.reviewCount + 1,
+                                scheduledDays = 1,
+                                lastReviewedAt = reviewedAt,
+                                nextReviewAt =
+                                    reviewedAt.plus(
+                                        Duration.ofDays(1)
+                                    ),
+                            ),
+                        elapsedDays = 0,
+                        scheduledDays = 1,
+                    )
+            }
+    }
+
+    private class SchedulerClock(
+        private val scheduler: TestCoroutineScheduler,
+        private val base: Instant,
+    ) : Clock() {
+
+        override fun getZone(): ZoneId =
+            ZoneOffset.UTC
+
+        override fun withZone(
+            zone: ZoneId?,
+        ): Clock =
+            this
+
+        override fun instant(): Instant =
+            base.plusMillis(
+                scheduler.currentTime
             )
+    }
+
+    companion object {
+        private const val A = 1L
+        private const val B = 2L
+        private const val C = 3L
+        private const val D = 4L
     }
 }

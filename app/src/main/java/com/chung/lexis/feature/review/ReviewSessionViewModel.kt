@@ -3,17 +3,23 @@ package com.chung.lexis.feature.review
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewCard
 import com.chung.lexis.domain.model.ReviewRating
+import com.chung.lexis.domain.model.ReviewState
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
 import com.chung.lexis.domain.usecase.SubmitReviewUseCase
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
+import java.time.Duration
+import java.time.Instant
 
 sealed interface ReviewSessionUiState {
     data object Idle : ReviewSessionUiState
@@ -27,6 +33,12 @@ sealed interface ReviewSessionUiState {
         val reviewedCount: Int,
         val remainingCount: Int,
         val error: ReviewSessionError? = null,
+    ) : ReviewSessionUiState
+
+    data class Waiting(
+        val nextDueAt: Instant,
+        val reviewedCount: Int,
+        val remainingCount: Int,
     ) : ReviewSessionUiState
 
     data class Completed(
@@ -53,6 +65,24 @@ class ReviewSessionViewModel(
     private val clock: Clock = Clock.systemUTC(),
 ) : ViewModel() {
 
+    private enum class SessionQueueKind {
+        SHORT_TERM,
+        REVIEW,
+        NEW,
+    }
+
+    private data class SessionQueueItem(
+        val lexemeId: Long,
+        val kind: SessionQueueKind,
+        val dueAt: Instant?,
+        val sequence: Long,
+    )
+
+    private data class ScheduledRepeat(
+        val lexemeId: Long,
+        val dueAt: Instant,
+    )
+
     private val _uiState =
         MutableStateFlow<ReviewSessionUiState>(
             ReviewSessionUiState.Idle
@@ -62,9 +92,74 @@ class ReviewSessionViewModel(
             StateFlow<ReviewSessionUiState> =
         _uiState.asStateFlow()
 
-    private val pendingLexemeIds = ArrayDeque<Long>()
+    private val pendingCards =
+        mutableListOf<SessionQueueItem>()
+
+    private val scheduledRepeats =
+        mutableMapOf<Long, ScheduledRepeat>()
+
+    private var nextSequence =
+        0L
 
     private var reviewedCount = 0
+
+    private val foregroundEvents =
+        Channel<Unit>(
+            capacity =
+                Channel.CONFLATED,
+        )
+
+    private val queueComparator =
+        Comparator<SessionQueueItem> {
+                left,
+                right,
+            ->
+
+            val kindComparison =
+                left.kind
+                    .ordinal
+                    .compareTo(
+                        right.kind.ordinal
+                    )
+
+            if (kindComparison != 0) {
+
+                kindComparison
+
+            } else if (
+                left.kind !=
+                SessionQueueKind.NEW
+            ) {
+
+                val leftDue =
+                    requireNotNull(
+                        left.dueAt
+                    )
+
+                val rightDue =
+                    requireNotNull(
+                        right.dueAt
+                    )
+
+                val dueComparison =
+                    leftDue.compareTo(
+                        rightDue
+                    )
+
+                if (dueComparison != 0) {
+                    dueComparison
+                } else {
+                    left.sequence.compareTo(
+                        right.sequence
+                    )
+                }
+
+            } else {
+                left.sequence.compareTo(
+                    right.sequence
+                )
+            }
+        }
 
     fun startSession(
         dueLimit: Int,
@@ -114,9 +209,23 @@ class ReviewSessionViewModel(
                     "Review queue contains duplicate lexemeId"
                 }
 
-                pendingLexemeIds.clear()
-                pendingLexemeIds.addAll(
-                    lexemeIds
+                pendingCards.clear()
+                scheduledRepeats.clear()
+
+                nextSequence = 0L
+
+                queue.forEach { progress ->
+
+                    pendingCards +=
+                        progress
+                            .toSessionQueueItem(
+                                sequence =
+                                    nextSequence++,
+                            )
+                }
+
+                pendingCards.sortWith(
+                    queueComparator
                 )
 
                 reviewedCount = 0
@@ -140,6 +249,12 @@ class ReviewSessionViewModel(
                     )
             }
         }
+    }
+
+    fun onForeground() {
+
+        foregroundEvents
+            .trySend(Unit)
     }
 
     fun revealAnswer() {
@@ -236,11 +351,11 @@ class ReviewSessionViewModel(
 
                     reviewedCount += 1
 
-                    /*
-                     * Card hiện tại đã consumed.
-                     * Không được expose nó lại
-                     * như một card có thể submit.
-                     */
+                    updateScheduledRepeat(
+                        progress =
+                            result.progress,
+                    )
+
                     _uiState.value =
                         ReviewSessionUiState.Loading
 
@@ -249,10 +364,6 @@ class ReviewSessionViewModel(
 
                 SaveReviewResult.LexemeNotFound -> {
 
-                    /*
-                     * Card không còn hợp lệ.
-                     * Move forward.
-                     */
                     _uiState.value =
                         ReviewSessionUiState.Loading
 
@@ -260,16 +371,67 @@ class ReviewSessionViewModel(
                 }
 
                 is SaveReviewResult.StaleProgress -> {
-                    reloadCurrentAfterStaleSafely(
+                    handleStaleProgress(
                         lexemeId =
                             current
                                 .card
                                 .lexeme
                                 .id,
+
+                        progress =
+                            result.current,
                     )
                 }
             }
         }
+    }
+
+    private suspend fun handleStaleProgress(
+        lexemeId: Long,
+        progress: LearningProgress,
+    ) {
+
+        val now =
+            clock.instant()
+
+        val nextReviewAt =
+            progress.nextReviewAt
+
+        val isFutureScheduled =
+            progress.state !=
+                    ReviewState.NEW &&
+                    nextReviewAt != null &&
+                    nextReviewAt.isAfter(now)
+
+        if (isFutureScheduled) {
+
+            /*
+             * Nếu external write chuyển nó thành
+             * LEARNING/RELEARNING future,
+             * giữ nó trong session.
+             *
+             * Nếu REVIEW future,
+             * remove khỏi in-session repeats.
+             */
+            updateScheduledRepeat(
+                progress = progress,
+            )
+
+            _uiState.value =
+                ReviewSessionUiState.Loading
+
+            loadNextCardSafely()
+
+            return
+        }
+
+        /*
+         * Vẫn due ngay → hydrate snapshot mới,
+         * bắt user đánh giá lại.
+         */
+        reloadCurrentAfterStaleSafely(
+            lexemeId = lexemeId,
+        )
     }
 
     private suspend fun loadNextCardSafely() {
@@ -324,69 +486,258 @@ class ReviewSessionViewModel(
         }
     }
 
-    private suspend fun loadNextCard() {
+    private fun updateScheduledRepeat(
+        progress: LearningProgress,
+    ) {
 
-        while (
-            pendingLexemeIds.isNotEmpty()
-        ) {
+        when (progress.state) {
 
-            val lexemeId =
-                pendingLexemeIds.first()
+            ReviewState.LEARNING,
+            ReviewState.RELEARNING -> {
 
-            val card =
-                reviewRepository
-                    .getReviewCard(
-                        lexemeId
+                val dueAt =
+                    requireNotNull(
+                        progress.nextReviewAt
+                    ) {
+                        "${progress.state} " +
+                                "must have nextReviewAt"
+                    }
+
+                scheduledRepeats[
+                    progress.lexemeId
+                ] =
+                    ScheduledRepeat(
+                        lexemeId =
+                            progress.lexemeId,
+
+                        dueAt =
+                            dueAt,
                     )
-
-            if (card == null) {
-
-                /*
-                 * Lexeme thực sự không còn nữa
-                 * → consume rồi skip.
-                 */
-                pendingLexemeIds.removeFirst()
-                continue
             }
 
+            ReviewState.NEW,
+            ReviewState.REVIEW -> {
+
+                scheduledRepeats.remove(
+                    progress.lexemeId
+                )
+            }
+        }
+    }
+
+    private fun promoteDueRepeats(
+        now: Instant,
+    ) {
+
+        val dueRepeats =
+            scheduledRepeats
+                .values
+                .filter { repeat ->
+
+                    !repeat
+                        .dueAt
+                        .isAfter(now)
+                }
+                .sortedWith(
+                    compareBy<ScheduledRepeat> {
+                        it.dueAt
+                    }.thenBy {
+                        it.lexemeId
+                    }
+                )
+
+        dueRepeats.forEach { repeat ->
+
+            scheduledRepeats.remove(
+                repeat.lexemeId
+            )
+
             /*
-             * Chỉ consume ID sau khi hydrate
-             * thành công.
+             * Defensive dedupe.
              */
-            pendingLexemeIds.removeFirst()
+            if (
+                pendingCards.none {
+                    it.lexemeId ==
+                            repeat.lexemeId
+                }
+            ) {
+
+                pendingCards +=
+                    SessionQueueItem(
+                        lexemeId =
+                            repeat.lexemeId,
+
+                        kind =
+                            SessionQueueKind
+                                .SHORT_TERM,
+
+                        dueAt =
+                            repeat.dueAt,
+
+                        sequence =
+                            nextSequence++,
+                    )
+            }
+        }
+
+        pendingCards.sortWith(
+            queueComparator
+        )
+    }
+
+    private suspend fun loadNextCard() {
+
+        while (true) {
+
+            val now =
+                clock.instant()
+
+            promoteDueRepeats(
+                now = now,
+            )
+
+            if (
+                pendingCards.isNotEmpty()
+            ) {
+
+                val item =
+                    pendingCards.first()
+
+                val card =
+                    reviewRepository
+                        .getReviewCard(
+                            item.lexemeId
+                        )
+
+                if (card == null) {
+
+                    pendingCards
+                        .removeAt(0)
+
+                    scheduledRepeats.remove(
+                        item.lexemeId
+                    )
+
+                    continue
+                }
+
+                pendingCards
+                    .removeAt(0)
+
+                _uiState.value =
+                    ReviewSessionUiState.Active(
+                        card =
+                            card,
+
+                        isAnswerRevealed =
+                            false,
+
+                        isSubmitting =
+                            false,
+
+                        reviewedCount =
+                            reviewedCount,
+
+                        /*
+                         * Known work hiện tại:
+                         *
+                         * current
+                         * + ready queue
+                         * + future short-term repeats
+                         */
+                        remainingCount =
+                            1 +
+                                    pendingCards.size +
+                                    scheduledRepeats.size,
+
+                        error =
+                            null,
+                    )
+
+                return
+            }
+
+            val nextRepeat =
+                scheduledRepeats
+                    .values
+                    .minWithOrNull(
+                        compareBy<ScheduledRepeat> {
+                            it.dueAt
+                        }.thenBy {
+                            it.lexemeId
+                        }
+                    )
+
+            if (nextRepeat == null) {
+
+                _uiState.value =
+                    ReviewSessionUiState.Completed(
+                        reviewedCount =
+                            reviewedCount,
+                    )
+
+                return
+            }
 
             _uiState.value =
-                ReviewSessionUiState.Active(
-                    card = card,
-
-                    isAnswerRevealed =
-                        false,
-
-                    isSubmitting =
-                        false,
+                ReviewSessionUiState.Waiting(
+                    nextDueAt =
+                        nextRepeat.dueAt,
 
                     reviewedCount =
                         reviewedCount,
 
-                    /*
-                     * +1 = current card.
-                     */
                     remainingCount =
-                        pendingLexemeIds.size +
-                                1,
-
-                    error =
-                        null,
+                        scheduledRepeats.size,
                 )
 
-            return
-        }
-
-        _uiState.value =
-            ReviewSessionUiState.Completed(
-                reviewedCount =
-                    reviewedCount,
+            awaitDueOrForeground(
+                dueAt =
+                    nextRepeat.dueAt,
             )
+
+            /*
+             * Wake → loop lại → đọc Clock thật
+             * → promoteDueRepeats().
+             */
+        }
+    }
+
+    private suspend fun awaitDueOrForeground(
+        dueAt: Instant,
+    ) {
+
+        while (true) {
+
+            val remainingMillis =
+                Duration
+                    .between(
+                        clock.instant(),
+                        dueAt,
+                    )
+                    .toMillis()
+
+            if (remainingMillis <= 0L) {
+                return
+            }
+
+            /*
+             * Wake bởi một trong hai:
+             *
+             * 1. timer tới hạn
+             * 2. app foreground lại
+             *
+             * Sau đó luôn quay lên đọc Clock thật.
+             */
+            withTimeoutOrNull(
+                remainingMillis
+                    .coerceAtLeast(1L)
+            ) {
+
+                foregroundEvents
+                    .receive()
+            }
+        }
     }
 
     private suspend fun reloadCurrentAfterStale(
@@ -409,7 +760,7 @@ class ReviewSessionViewModel(
             ReviewSessionUiState.Active(
                 card =
                     card,
-                
+
                 isAnswerRevealed =
                     false,
 
@@ -420,13 +771,66 @@ class ReviewSessionViewModel(
                     reviewedCount,
 
                 remainingCount =
-                    pendingLexemeIds.size +
-                            1,
+                    1 +
+                            pendingCards.size +
+                            scheduledRepeats.size,
 
                 error =
                     ReviewSessionError
                         .STALE_PROGRESS,
             )
+    }
+
+    private fun LearningProgress.toSessionQueueItem(
+        sequence: Long,
+    ): SessionQueueItem {
+
+        val kind =
+            when (state) {
+
+                ReviewState.LEARNING,
+                ReviewState.RELEARNING ->
+                    SessionQueueKind
+                        .SHORT_TERM
+
+                ReviewState.REVIEW ->
+                    SessionQueueKind
+                        .REVIEW
+
+                ReviewState.NEW ->
+                    SessionQueueKind
+                        .NEW
+            }
+
+        val dueAt =
+            when (kind) {
+
+                SessionQueueKind.NEW ->
+                    null
+
+                SessionQueueKind.SHORT_TERM,
+                SessionQueueKind.REVIEW ->
+                    requireNotNull(
+                        nextReviewAt
+                    ) {
+                        "$state progress $lexemeId " +
+                                "must have nextReviewAt"
+                    }
+            }
+
+        return SessionQueueItem(
+            lexemeId =
+                lexemeId,
+
+            kind =
+                kind,
+
+            dueAt =
+                dueAt,
+
+            sequence =
+                sequence,
+        )
     }
 
     class Factory(
