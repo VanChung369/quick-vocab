@@ -331,32 +331,7 @@ class ReviewSessionViewModelTest {
                     .getReviewQueueCallCount,
             )
 
-            /*
-             * retry() chưa tồn tại.
-             *
-             * Dùng reflection ở RED phase để test vẫn
-             * compile và fail bằng assertion thay vì
-             * fail compilation.
-             */
-            val retryMethod =
-                viewModel
-                    .javaClass
-                    .methods
-                    .firstOrNull {
-                        it.name == "retry" &&
-                                it.parameterCount == 0
-                    }
-
-            assertTrue(
-                "ReviewSessionViewModel must expose retry()",
-                retryMethod != null,
-            )
-
-            retryMethod ?: return@runTest
-
-            retryMethod.invoke(
-                viewModel
-            )
+            viewModel.retry()
 
             advanceUntilIdle()
 

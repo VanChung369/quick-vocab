@@ -247,6 +247,33 @@ class ReviewSessionViewModel(
         }
     }
 
+    fun retry() {
+
+        if (
+            _uiState.value !is
+                    ReviewSessionUiState.Failed
+        ) {
+            return
+        }
+
+        /*
+         * GREEN #1:
+         *
+         * Hiện tại chỉ support retry sau
+         * initial session load failure.
+         *
+         * Đưa về Idle để startSession()
+         * được phép query global queue lại.
+         *
+         * Mid-session resume sẽ được khóa
+         * bằng RED test tiếp theo.
+         */
+        _uiState.value =
+            ReviewSessionUiState.Idle
+
+        startSession()
+    }
+
     fun onForeground() {
 
         foregroundEvents
