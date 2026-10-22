@@ -93,6 +93,10 @@ class ReviewSessionViewModel(
 
         data object LoadNextCard :
             ReviewSessionRecovery
+
+        data class ReloadCurrentCard(
+            val lexemeId: Long,
+        ) : ReviewSessionRecovery
     }
 
     private val _uiState =
@@ -276,9 +280,11 @@ class ReviewSessionViewModel(
             return
         }
 
-        when (
+        val recovery =
             pendingRecovery
-        ) {
+                ?: return
+
+        when (recovery) {
 
             ReviewSessionRecovery.StartSession -> {
 
@@ -304,14 +310,19 @@ class ReviewSessionViewModel(
                 }
             }
 
-            null -> {
-                /*
-                 * Chưa có recovery strategy.
-                 *
-                 * Stale reload sẽ được thêm bằng
-                 * RED #3.
-                 */
-                return
+            is ReviewSessionRecovery
+                .ReloadCurrentCard -> {
+
+                _uiState.value =
+                    ReviewSessionUiState.Loading
+
+                viewModelScope.launch {
+
+                    reloadCurrentAfterStaleSafely(
+                        lexemeId =
+                            recovery.lexemeId,
+                    )
+                }
             }
         }
     }
@@ -494,10 +505,16 @@ class ReviewSessionViewModel(
          * Vẫn due ngay → hydrate snapshot mới,
          * bắt user đánh giá lại.
          */
-        pendingRecovery = null
+        pendingRecovery =
+            ReviewSessionRecovery
+                .ReloadCurrentCard(
+                    lexemeId =
+                        lexemeId,
+                )
 
         reloadCurrentAfterStaleSafely(
-            lexemeId = lexemeId,
+            lexemeId =
+                lexemeId,
         )
     }
 
@@ -534,11 +551,22 @@ class ReviewSessionViewModel(
         lexemeId: Long,
     ) {
 
+        pendingRecovery =
+            ReviewSessionRecovery
+                .ReloadCurrentCard(
+                    lexemeId =
+                        lexemeId,
+                )
+
         try {
 
             reloadCurrentAfterStale(
-                lexemeId = lexemeId,
+                lexemeId =
+                    lexemeId,
             )
+
+            pendingRecovery =
+                null
 
         } catch (
             cancellation:

@@ -487,6 +487,165 @@ class ReviewSessionViewModelTest {
         }
 
     @Test
+    fun retryAfterStaleReloadFailureReloadsSameCard() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                        ),
+
+                    cards =
+                        listOf(
+                            A,
+                            B,
+                        ).associateWith {
+                            card(it)
+                        },
+
+                    failCardIds =
+                        emptySet(),
+                )
+
+            viewModel.startSession()
+
+            runCurrent()
+
+            assertActiveCard(
+                A,
+                viewModel,
+            )
+
+            /*
+             * Giả lập concurrent/external write.
+             *
+             * saveReview của A sẽ trả StaleProgress,
+             * thay vì Saved.
+             */
+            fakeRepository
+                .nextSaveReviewResult =
+                SaveReviewResult.StaleProgress(
+                    current =
+                        progress(A),
+                )
+
+            /*
+             * Initial A đã hydrate thành công.
+             *
+             * Bây giờ mới bảo lần hydrate A tiếp theo
+             * fail → chính là stale reload.
+             */
+            fakeRepository
+                .failNextCardLoad(A)
+
+            viewModel.revealAnswer()
+
+            viewModel.submitRating(
+                ReviewRating.GOOD
+            )
+
+            runCurrent()
+
+            /*
+             * Stale A -> reload A -> throw.
+             */
+            assertEquals(
+                ReviewSessionUiState.Failed(
+                    ReviewSessionError.LOAD_FAILED
+                ),
+                viewModel.uiState.value,
+            )
+
+            /*
+             * Queue toàn cục vẫn chỉ load 1 lần.
+             */
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            /*
+             * A chưa được review thành công.
+             */
+            assertEquals(
+                1,
+                fakeRepository
+                    .saveReviewCallCount,
+            )
+
+            /*
+             * B tuyệt đối chưa được hydrate.
+             */
+            assertTrue(
+                B !in
+                        fakeRepository
+                            .requestedCardIds
+            )
+
+            /*
+             * Đây là behavior RED #3:
+             *
+             * retry phải reload A,
+             * KHÔNG loadNextCard() sang B.
+             */
+            viewModel.retry()
+
+            runCurrent()
+
+            val state =
+                viewModel
+                    .uiState
+                    .value
+
+            assertTrue(
+                "Expected stale card A to be reloaded but was $state",
+                state is
+                        ReviewSessionUiState.Active &&
+                        state.card.lexeme.id == A,
+            )
+
+            state as
+                    ReviewSessionUiState.Active
+
+            /*
+             * Stale save không được tính là review thành công.
+             */
+            assertEquals(
+                0,
+                state.reviewedCount,
+            )
+
+            assertEquals(
+                ReviewSessionError
+                    .STALE_PROGRESS,
+                state.error,
+            )
+
+            /*
+             * Retry stale cũng không được query
+             * global queue lại.
+             */
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            /*
+             * Vẫn chưa được đi B.
+             */
+            assertTrue(
+                B !in
+                        fakeRepository
+                            .requestedCardIds
+            )
+        }
+
+    @Test
     fun startSessionUsesPolicyAndDoesNotRestartAfterCompletion() =
         runTest {
 
@@ -708,6 +867,23 @@ class ReviewSessionViewModelTest {
         val requestedCardIds =
             mutableListOf<Long>()
 
+        var nextSaveReviewResult:
+                SaveReviewResult? = null
+
+        fun failNextCardLoad(
+            lexemeId: Long,
+        ) {
+
+            cardFailuresRemaining[
+                lexemeId
+            ] =
+                (
+                        cardFailuresRemaining[
+                            lexemeId
+                        ] ?: 0
+                        ) + 1
+        }
+
         override suspend fun getProgress(
             lexemeId: Long,
         ): LearningProgress? =
@@ -756,6 +932,17 @@ class ReviewSessionViewModelTest {
         ): SaveReviewResult {
 
             saveReviewCallCount += 1
+
+            val overriddenResult =
+                nextSaveReviewResult
+
+            if (overriddenResult != null) {
+
+                nextSaveReviewResult =
+                    null
+
+                return overriddenResult
+            }
 
             progressById[nextProgress.lexemeId] =
                 nextProgress
