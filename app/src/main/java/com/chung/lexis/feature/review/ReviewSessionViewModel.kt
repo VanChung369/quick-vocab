@@ -187,66 +187,38 @@ class ReviewSessionViewModel(
 
         viewModelScope.launch {
 
-            try {
+            val result =
+                try {
 
-                when (
-                    val result =
-                        submitReviewUseCase(
-                            lexemeId =
-                                current
-                                    .card
-                                    .lexeme
-                                    .id,
+                    submitReviewUseCase(
+                        lexemeId =
+                            current
+                                .card
+                                .lexeme
+                                .id,
 
-                            rating =
-                                rating,
+                        rating =
+                            rating,
 
-                            reviewedAt =
-                                clock.instant(),
-                        )
+                        reviewedAt =
+                            clock.instant(),
+                    )
+
+                } catch (
+                    cancellation:
+                    CancellationException,
                 ) {
 
-                    is SaveReviewResult.Saved -> {
+                    throw cancellation
 
-                        reviewedCount += 1
+                } catch (_: Exception) {
 
-                        loadNextCard()
-                    }
-
-                    SaveReviewResult.LexemeNotFound -> {
-                        loadNextCard()
-                    }
-
-                    is SaveReviewResult.StaleProgress -> {
-                        reloadCurrentAfterStale(
-                            lexemeId =
-                                current
-                                    .card
-                                    .lexeme
-                                    .id,
-                        )
-                    }
-                }
-
-            } catch (
-                cancellation:
-                CancellationException,
-            ) {
-
-                throw cancellation
-
-            } catch (_: Exception) {
-
-                val latest =
-                    _uiState.value
-
-                if (
-                    latest is
-                            ReviewSessionUiState.Active
-                ) {
-
+                    /*
+                     * Review CHƯA được xác nhận save.
+                     * Cho user retry rating hiện tại.
+                     */
                     _uiState.value =
-                        latest.copy(
+                        current.copy(
                             isSubmitting =
                                 false,
 
@@ -254,8 +226,101 @@ class ReviewSessionViewModel(
                                 ReviewSessionError
                                     .SAVE_FAILED,
                         )
+
+                    return@launch
+                }
+
+            when (result) {
+
+                is SaveReviewResult.Saved -> {
+
+                    reviewedCount += 1
+
+                    /*
+                     * Card hiện tại đã consumed.
+                     * Không được expose nó lại
+                     * như một card có thể submit.
+                     */
+                    _uiState.value =
+                        ReviewSessionUiState.Loading
+
+                    loadNextCardSafely()
+                }
+
+                SaveReviewResult.LexemeNotFound -> {
+
+                    /*
+                     * Card không còn hợp lệ.
+                     * Move forward.
+                     */
+                    _uiState.value =
+                        ReviewSessionUiState.Loading
+
+                    loadNextCardSafely()
+                }
+
+                is SaveReviewResult.StaleProgress -> {
+                    reloadCurrentAfterStaleSafely(
+                        lexemeId =
+                            current
+                                .card
+                                .lexeme
+                                .id,
+                    )
                 }
             }
+        }
+    }
+
+    private suspend fun loadNextCardSafely() {
+
+        try {
+
+            loadNextCard()
+
+        } catch (
+            cancellation:
+            CancellationException,
+        ) {
+
+            throw cancellation
+
+        } catch (_: Exception) {
+
+            _uiState.value =
+                ReviewSessionUiState.Failed(
+                    error =
+                        ReviewSessionError
+                            .LOAD_FAILED,
+                )
+        }
+    }
+
+    private suspend fun reloadCurrentAfterStaleSafely(
+        lexemeId: Long,
+    ) {
+
+        try {
+
+            reloadCurrentAfterStale(
+                lexemeId = lexemeId,
+            )
+
+        } catch (
+            cancellation:
+            CancellationException,
+        ) {
+
+            throw cancellation
+
+        } catch (_: Exception) {
+
+            _uiState.value =
+                ReviewSessionUiState.Failed(
+                    error =
+                        ReviewSessionError
+                            .LOAD_FAILED,
+                )
         }
     }
 
@@ -266,15 +331,29 @@ class ReviewSessionViewModel(
         ) {
 
             val lexemeId =
-                pendingLexemeIds
-                    .removeFirst()
+                pendingLexemeIds.first()
 
             val card =
                 reviewRepository
                     .getReviewCard(
                         lexemeId
                     )
-                    ?: continue
+
+            if (card == null) {
+
+                /*
+                 * Lexeme thực sự không còn nữa
+                 * → consume rồi skip.
+                 */
+                pendingLexemeIds.removeFirst()
+                continue
+            }
+
+            /*
+             * Chỉ consume ID sau khi hydrate
+             * thành công.
+             */
+            pendingLexemeIds.removeFirst()
 
             _uiState.value =
                 ReviewSessionUiState.Active(
