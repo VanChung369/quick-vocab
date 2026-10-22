@@ -5,12 +5,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.chung.lexis.domain.repository.ReviewRepository
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
 
 data class ReviewBadgeUiState(
@@ -19,92 +19,87 @@ data class ReviewBadgeUiState(
 )
 
 class ReviewBadgeViewModel(
-    private val reviewRepository:
-    ReviewRepository,
+    reviewRepository: ReviewRepository,
 
-    private val clock:
-    Clock = Clock.systemUTC(),
+    clock: Clock = Clock.systemUTC(),
 ) : ViewModel() {
-
-    private val _uiState =
-        MutableStateFlow(
-            ReviewBadgeUiState()
-        )
 
     val uiState:
             StateFlow<ReviewBadgeUiState> =
-        _uiState.asStateFlow()
 
-    private var refreshJob:
-            Job? = null
+        reviewRepository
+            .observeReviewDueSummary(
+                clock = clock,
+            )
+            .map { summary ->
 
-    fun refresh() {
-        refreshJob?.cancel()
+                ReviewBadgeUiState(
+                    dueCount =
+                        summary.dueCount,
 
-        refreshJob =
-            viewModelScope.launch {
-
-                _uiState.update { state ->
-                    state.copy(
-                        isLoading = true,
-                    )
-                }
-
-                try {
-
-                    val summary =
-                        reviewRepository
-                            .getReviewDueSummary(
-                                now =
-                                    clock.instant(),
-                            )
-
-                    _uiState.value =
-                        ReviewBadgeUiState(
-                            dueCount =
-                                summary.dueCount,
-
-                            isLoading =
-                                false,
-                        )
-
-                } catch (
-                    cancellation:
-                    CancellationException,
-                ) {
-                    throw cancellation
-
-                } catch (_: Exception) {
-
-                    /*
-                     * Không restore một snapshot "previous"
-                     * cũ vì request khác có thể đã update
-                     * dueCount mới hơn.
-                     */
-                    _uiState.update { state ->
-                        state.copy(
-                            isLoading = false,
-                        )
-                    }
-                }
+                    isLoading =
+                        false,
+                )
             }
-    }
+            .retryWhen {
+                    cause,
+                    attempt,
+                ->
+
+                if (
+                    cause is
+                            CancellationException
+                ) {
+                    return@retryWhen false
+                }
+
+                val retryDelayMillis =
+                    (
+                            attempt + 1L
+                            )
+                        .coerceAtMost(5L) *
+                            1_000L
+
+                delay(
+                    retryDelayMillis
+                )
+
+                true
+            }
+            .stateIn(
+                scope =
+                    viewModelScope,
+
+                started =
+                    SharingStarted
+                        .WhileSubscribed(
+                            stopTimeoutMillis =
+                                5_000L,
+                        ),
+
+                initialValue =
+                    ReviewBadgeUiState(),
+            )
 
     class Factory(
         private val reviewRepository:
         ReviewRepository,
     ) : ViewModelProvider.Factory {
 
-        @Suppress("UNCHECKED_CAST")
+        @Suppress(
+            "UNCHECKED_CAST"
+        )
         override fun <T : ViewModel>
                 create(
             modelClass: Class<T>,
         ): T {
 
             require(
-                modelClass.isAssignableFrom(
-                    ReviewBadgeViewModel::class.java
-                )
+                modelClass
+                    .isAssignableFrom(
+                        ReviewBadgeViewModel::
+                        class.java
+                    )
             ) {
                 "Unknown ViewModel class: " +
                         modelClass.name

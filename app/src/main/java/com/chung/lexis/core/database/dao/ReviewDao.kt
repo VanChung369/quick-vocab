@@ -196,4 +196,41 @@ interface ReviewDao {
         readyStatus: EnrichmentStatusColumn,
         newState: ReviewStateColumn,
     ): Int
+
+    @Query(
+        """
+    SELECT MIN(
+        p.nextReviewAtEpochMillis
+    )
+    FROM learning_progress AS p
+
+    WHERE p.state IN (
+        :learningState,
+        :relearningState,
+        :reviewState
+    )
+
+      AND p.nextReviewAtEpochMillis
+          IS NOT NULL
+
+      AND p.nextReviewAtEpochMillis
+          > :nowEpochMillis
+
+      AND EXISTS (
+          SELECT 1
+          FROM deck_items AS di
+          WHERE di.lexemeId =
+                p.lexemeId
+      )
+    """
+    )
+    suspend fun getNextDueAtAfter(
+        nowEpochMillis: Long,
+        learningState:
+        ReviewStateColumn,
+        relearningState:
+        ReviewStateColumn,
+        reviewState:
+        ReviewStateColumn,
+    ): Long?
 }

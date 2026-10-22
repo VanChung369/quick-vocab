@@ -11,6 +11,14 @@ import com.chung.lexis.domain.model.ReviewDueSummary
 import com.chung.lexis.domain.model.ReviewLog
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import java.time.Clock
 import java.time.Instant
 
 class RoomReviewRepository(
@@ -338,4 +346,95 @@ class RoomReviewRepository(
                     newAvailable,
             )
         }
+
+    @OptIn(
+        ExperimentalCoroutinesApi::class
+    )
+    override fun observeReviewDueSummary(
+        clock: Clock,
+    ): Flow<ReviewDueSummary> =
+
+        database
+            .invalidationTracker
+            .createFlow(
+                "learning_progress",
+                "deck_items",
+                "lexemes",
+            )
+            .flatMapLatest {
+                flow {
+
+                    while (true) {
+
+                        val now =
+                            clock.instant()
+
+                        /*
+                         * 1. Emit summary hiện tại.
+                         */
+                        emit(
+                            getReviewDueSummary(
+                                now = now,
+                            )
+                        )
+
+                        /*
+                         * 2. Tìm thời điểm tương lai
+                         * gần nhất mà badge có thể thay đổi.
+                         */
+                        val nextDueAtEpochMillis =
+                            reviewDao
+                                .getNextDueAtAfter(
+                                    nowEpochMillis =
+                                        now.toEpochMilli(),
+
+                                    learningState =
+                                        ReviewStateColumn.LEARNING,
+
+                                    relearningState =
+                                        ReviewStateColumn.RELEARNING,
+
+                                    reviewState =
+                                        ReviewStateColumn.REVIEW,
+                                )
+
+                        /*
+                         * Không có card nào sắp due.
+                         *
+                         * Không polling.
+                         *
+                         * Flow ngủ vô thời hạn cho tới khi
+                         * Room table bị thay đổi; flatMapLatest
+                         * sẽ cancel flow này và tạo flow mới.
+                         */
+                        if (
+                            nextDueAtEpochMillis ==
+                            null
+                        ) {
+                            awaitCancellation()
+                        }
+
+                        /*
+                         * Clock có thể đã chạy thêm vài ms
+                         * trong lúc query DB.
+                         */
+                        val delayMillis =
+                            (
+                                    nextDueAtEpochMillis -
+                                            clock
+                                                .instant()
+                                                .toEpochMilli()
+                                    )
+                                .coerceAtLeast(1L)
+
+                        /*
+                         * Ngủ chính xác tới card sắp due.
+                         */
+                        delay(
+                            delayMillis
+                        )
+                    }
+                }
+            }
+            .distinctUntilChanged()
 }

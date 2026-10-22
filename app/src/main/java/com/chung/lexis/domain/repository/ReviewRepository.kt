@@ -3,6 +3,8 @@ package com.chung.lexis.domain.repository
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewDueSummary
 import com.chung.lexis.domain.model.ReviewLog
+import kotlinx.coroutines.flow.Flow
+import java.time.Clock
 import java.time.Instant
 
 interface ReviewRepository {
@@ -19,6 +21,10 @@ interface ReviewRepository {
     suspend fun getReviewDueSummary(
         now: Instant,
     ): ReviewDueSummary
+
+    fun observeReviewDueSummary(
+        clock: Clock,
+    ): Flow<ReviewDueSummary>
 
     suspend fun saveReview(
         previousProgress: LearningProgress,

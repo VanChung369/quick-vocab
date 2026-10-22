@@ -51,17 +51,4 @@ class MainActivity :
             }
         }
     }
-
-    override fun onResume() {
-        super.onResume()
-
-        /*
-         * Time có thể đã trôi qua trong khi
-         * app background.
-         *
-         * Card có thể vừa trở thành due dù
-         * database không thay đổi.
-         */
-        reviewBadgeViewModel.refresh()
-    }
 }
