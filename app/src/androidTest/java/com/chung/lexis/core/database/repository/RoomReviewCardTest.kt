@@ -136,11 +136,20 @@ class RoomReviewCardTest {
                 .insertPronunciations(
                     listOf(
                         PronunciationEntity(
-                            lexemeId = lexemeId,
+                            lexemeId =
+                                lexemeId,
+
+                            meaningId =
+                                translationMeaningId,
+
                             type =
                                 PronunciationTypeColumn.IPA,
-                            value = "/ˈæp.əl/",
-                            languageTag = LANGUAGE_TAG,
+
+                            value =
+                                "/ˈæp.əl/",
+
+                            languageTag =
+                                LANGUAGE_TAG,
                         ),
 
                         PronunciationEntity(
@@ -264,6 +273,14 @@ class RoomReviewCardTest {
             assertEquals(
                 "/ˈæp.əl/",
                 card.pronunciations.single().value,
+            )
+
+            assertEquals(
+                translationMeaningId,
+                card
+                    .pronunciations
+                    .single()
+                    .meaningId,
             )
 
             /*
@@ -447,6 +464,89 @@ class RoomReviewCardTest {
                         LANGUAGE_TAG,
                 )
             )
+
+    @Test
+    fun reviewCardRejectsPronunciationWhoseMeaningBelongsToAnotherLexeme() =
+        runBlocking {
+
+            val appleId =
+                insertLexeme("apple")
+
+            val bananaId =
+                insertLexeme("banana")
+
+            val bananaMeaningId =
+                database
+                    .lexemeDao()
+                    .insertMeanings(
+                        listOf(
+                            meaning(
+                                lexemeId =
+                                    bananaId,
+
+                                text =
+                                    "quả chuối",
+
+                                kind =
+                                    MeaningKindColumn.TRANSLATION,
+
+                                languageTag =
+                                    "vi",
+
+                                sortOrder =
+                                    0,
+                            )
+                        )
+                    )
+                    .single()
+
+            /*
+             * Hai FK đều hợp lệ riêng rẽ:
+             *
+             * appleId tồn tại
+             * bananaMeaningId tồn tại
+             *
+             * Nhưng relation semantic là sai.
+             */
+            database
+                .lexemeDao()
+                .insertPronunciations(
+                    listOf(
+                        PronunciationEntity(
+                            lexemeId =
+                                appleId,
+
+                            meaningId =
+                                bananaMeaningId,
+
+                            type =
+                                PronunciationTypeColumn.IPA,
+
+                            value =
+                                "/test/",
+
+                            languageTag =
+                                LANGUAGE_TAG,
+                        )
+                    )
+                )
+
+            val result =
+                runCatching {
+
+                    repository
+                        .getReviewCard(
+                            lexemeId =
+                                appleId,
+                        )
+                }
+
+            assertTrue(
+                result.exceptionOrNull() is
+                        IllegalArgumentException
+            )
+        }
+    
 
     companion object {
         private const val LANGUAGE_TAG =

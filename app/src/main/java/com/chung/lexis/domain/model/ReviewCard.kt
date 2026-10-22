@@ -9,6 +9,7 @@ data class ReviewCard(
 ) {
 
     init {
+
         require(
             progress.lexemeId ==
                     lexeme.id
@@ -38,6 +39,36 @@ data class ReviewCard(
             }
         ) {
             "All examples must belong to lexeme ${lexeme.id}"
+        }
+
+        val meaningIds =
+            meanings
+                .mapTo(
+                    mutableSetOf()
+                ) {
+                    it.id
+                }
+
+        require(
+            pronunciations.all { pronunciation ->
+
+                pronunciation.meaningId == null ||
+                        pronunciation.meaningId in
+                        meaningIds
+            }
+        ) {
+            "Pronunciation meaningId must belong to lexeme ${lexeme.id}"
+        }
+
+        require(
+            examples.all { example ->
+
+                example.meaningId == null ||
+                        example.meaningId in
+                        meaningIds
+            }
+        ) {
+            "Example meaningId must belong to lexeme ${lexeme.id}"
         }
     }
 }
