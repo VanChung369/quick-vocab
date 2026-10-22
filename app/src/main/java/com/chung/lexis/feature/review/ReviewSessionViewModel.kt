@@ -86,6 +86,15 @@ class ReviewSessionViewModel(
         val dueAt: Instant,
     )
 
+    private sealed interface ReviewSessionRecovery {
+
+        data object StartSession :
+            ReviewSessionRecovery
+
+        data object LoadNextCard :
+            ReviewSessionRecovery
+    }
+
     private val _uiState =
         MutableStateFlow<ReviewSessionUiState>(
             ReviewSessionUiState.Idle
@@ -105,6 +114,9 @@ class ReviewSessionViewModel(
         0L
 
     private var reviewedCount = 0
+
+    private var pendingRecovery:
+            ReviewSessionRecovery? = null
 
     private val foregroundEvents =
         Channel<Unit>(
@@ -174,6 +186,9 @@ class ReviewSessionViewModel(
 
         _uiState.value = ReviewSessionUiState.Loading
 
+        pendingRecovery =
+            ReviewSessionRecovery.StartSession
+
         viewModelScope.launch {
 
             try {
@@ -226,7 +241,12 @@ class ReviewSessionViewModel(
 
                 reviewedCount = 0
 
+                pendingRecovery =
+                    ReviewSessionRecovery.LoadNextCard
+
                 loadNextCard()
+
+                pendingRecovery = null
 
             } catch (
                 cancellation:
@@ -256,22 +276,44 @@ class ReviewSessionViewModel(
             return
         }
 
-        /*
-         * GREEN #1:
-         *
-         * Hiện tại chỉ support retry sau
-         * initial session load failure.
-         *
-         * Đưa về Idle để startSession()
-         * được phép query global queue lại.
-         *
-         * Mid-session resume sẽ được khóa
-         * bằng RED test tiếp theo.
-         */
-        _uiState.value =
-            ReviewSessionUiState.Idle
+        when (
+            pendingRecovery
+        ) {
 
-        startSession()
+            ReviewSessionRecovery.StartSession -> {
+
+                _uiState.value =
+                    ReviewSessionUiState.Idle
+
+                startSession()
+            }
+
+            ReviewSessionRecovery.LoadNextCard -> {
+
+                /*
+                 * Set Loading đồng bộ trước launch
+                 * để double tap Retry không launch
+                 * hai coroutine.
+                 */
+                _uiState.value =
+                    ReviewSessionUiState.Loading
+
+                viewModelScope.launch {
+
+                    loadNextCardSafely()
+                }
+            }
+
+            null -> {
+                /*
+                 * Chưa có recovery strategy.
+                 *
+                 * Stale reload sẽ được thêm bằng
+                 * RED #3.
+                 */
+                return
+            }
+        }
     }
 
     fun onForeground() {
@@ -452,6 +494,8 @@ class ReviewSessionViewModel(
          * Vẫn due ngay → hydrate snapshot mới,
          * bắt user đánh giá lại.
          */
+        pendingRecovery = null
+
         reloadCurrentAfterStaleSafely(
             lexemeId = lexemeId,
         )
@@ -459,9 +503,14 @@ class ReviewSessionViewModel(
 
     private suspend fun loadNextCardSafely() {
 
+        pendingRecovery =
+            ReviewSessionRecovery.LoadNextCard
+
         try {
 
             loadNextCard()
+
+            pendingRecovery = null
 
         } catch (
             cancellation:

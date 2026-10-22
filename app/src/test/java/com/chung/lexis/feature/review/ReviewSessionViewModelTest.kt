@@ -354,6 +354,139 @@ class ReviewSessionViewModelTest {
         }
 
     @Test
+    fun retryAfterMidSessionLoadFailureResumesWithoutRequery() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                        ),
+
+                    cards =
+                        listOf(
+                            A,
+                            B,
+                        ).associateWith {
+                            card(it)
+                        },
+
+                    failCardIds =
+                        emptySet(),
+
+                    /*
+                     * B fail đúng lần hydrate đầu.
+                     */
+                    cardFailuresRemaining =
+                        mapOf(
+                            B to 1,
+                        ),
+                )
+
+            viewModel.startSession()
+
+            runCurrent()
+
+            assertActiveCard(
+                A,
+                viewModel,
+            )
+
+            /*
+             * Save A thành công.
+             *
+             * Sau đó ViewModel load B,
+             * nhưng B fail lần đầu.
+             */
+            viewModel.revealAnswer()
+
+            viewModel.submitRating(
+                ReviewRating.GOOD
+            )
+
+            runCurrent()
+
+            assertEquals(
+                ReviewSessionUiState.Failed(
+                    ReviewSessionError.LOAD_FAILED
+                ),
+                viewModel.uiState.value,
+            )
+
+            /*
+             * A đã được save đúng một lần.
+             */
+            assertEquals(
+                1,
+                fakeRepository
+                    .saveReviewCallCount,
+            )
+
+            /*
+             * Initial queue chỉ query một lần.
+             */
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            /*
+             * Retry phải tiếp tục session hiện tại,
+             * KHÔNG start session mới.
+             */
+            viewModel.retry()
+
+            runCurrent()
+
+            val state =
+                viewModel
+                    .uiState
+                    .value
+
+            assertTrue(
+                "Expected Active(B) but was $state",
+                state is
+                        ReviewSessionUiState.Active &&
+                        state.card.lexeme.id == B,
+            )
+
+            state as
+                    ReviewSessionUiState.Active
+
+            /*
+             * reviewedCount của A phải được giữ.
+             */
+            assertEquals(
+                1,
+                state.reviewedCount,
+            )
+
+            /*
+             * Đây là invariant quan trọng nhất:
+             *
+             * Retry giữa session không được
+             * lấy global queue lần nữa.
+             */
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            /*
+             * Retry load B không được submit A lần nữa.
+             */
+            assertEquals(
+                1,
+                fakeRepository
+                    .saveReviewCallCount,
+            )
+        }
+
+    @Test
     fun startSessionUsesPolicyAndDoesNotRestartAfterCompletion() =
         runTest {
 
@@ -473,6 +606,9 @@ class ReviewSessionViewModelTest {
                 newLimit = 10,
             ),
         queueFailuresRemaining: Int = 0,
+        cardFailuresRemaining:
+        Map<Long, Int> =
+            emptyMap(),
     ): ReviewSessionViewModel {
 
         fakeRepository =
@@ -482,6 +618,9 @@ class ReviewSessionViewModelTest {
                 failCardIds = failCardIds,
                 queueFailuresRemaining =
                     queueFailuresRemaining,
+
+                cardFailuresRemaining =
+                    cardFailuresRemaining,
             )
 
         return ReviewSessionViewModel(
@@ -534,10 +673,17 @@ class ReviewSessionViewModelTest {
         private val cards: Map<Long, ReviewCard>,
         private val failCardIds: Set<Long>,
         queueFailuresRemaining: Int = 0,
+        cardFailuresRemaining:
+        Map<Long, Int> =
+            emptyMap(),
     ) : ReviewRepository {
 
         private var queueFailuresRemaining =
             queueFailuresRemaining
+
+        private val cardFailuresRemaining =
+            cardFailuresRemaining
+                .toMutableMap()
 
         private val progressById =
             queue
@@ -632,6 +778,23 @@ class ReviewSessionViewModelTest {
             requestedCardIds += lexemeId
 
             if (lexemeId in failCardIds) {
+                throw IllegalStateException(
+                    "Cannot hydrate $lexemeId"
+                )
+            }
+
+            val remainingFailures =
+                cardFailuresRemaining[
+                    lexemeId
+                ] ?: 0
+
+            if (remainingFailures > 0) {
+
+                cardFailuresRemaining[
+                    lexemeId
+                ] =
+                    remainingFailures - 1
+
                 throw IllegalStateException(
                     "Cannot hydrate $lexemeId"
                 )
