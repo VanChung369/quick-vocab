@@ -48,6 +48,9 @@ class MainActivity :
 
                 submitReviewUseCase =
                     container.submitReviewUseCase,
+
+                launchPolicy =
+                    container.reviewSessionLaunchPolicy,
             )
 
         ViewModelProvider(

@@ -1,6 +1,7 @@
 package com.chung.lexis.feature.review
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -19,6 +20,13 @@ fun ReviewRoute(
     val uiState by viewModel
         .uiState
         .collectAsStateWithLifecycle()
+
+    LaunchedEffect(
+        viewModel
+    ) {
+
+        viewModel.startSession()
+    }
 
     LifecycleEventEffect(
         event =

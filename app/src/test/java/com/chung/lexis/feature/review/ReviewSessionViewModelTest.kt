@@ -6,6 +6,7 @@ import com.chung.lexis.domain.model.ReviewCard
 import com.chung.lexis.domain.model.ReviewDueSummary
 import com.chung.lexis.domain.model.ReviewLog
 import com.chung.lexis.domain.model.ReviewRating
+import com.chung.lexis.domain.model.ReviewSessionLaunchPolicy
 import com.chung.lexis.domain.model.ReviewState
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
@@ -86,10 +87,7 @@ class ReviewSessionViewModelTest {
                         setOf(2L),
                 )
 
-            viewModel.startSession(
-                dueLimit = 10,
-                newLimit = 10,
-            )
+            viewModel.startSession()
 
             advanceUntilIdle()
 
@@ -158,10 +156,7 @@ class ReviewSessionViewModelTest {
                         emptySet(),
                 )
 
-            viewModel.startSession(
-                dueLimit = 10,
-                newLimit = 10,
-            )
+            viewModel.startSession()
 
             advanceUntilIdle()
 
@@ -220,12 +215,14 @@ class ReviewSessionViewModelTest {
                             .associateWith { card(it) },
                     failCardIds =
                         emptySet(),
+                    launchPolicy =
+                        ReviewSessionLaunchPolicy(
+                            dueLimit = 10,
+                            newLimit = 2,
+                        ),
                 )
 
-            viewModel.startSession(
-                dueLimit = 10,
-                newLimit = 2,
-            )
+            viewModel.startSession()
 
             advanceUntilIdle()
 
@@ -298,6 +295,82 @@ class ReviewSessionViewModelTest {
             )
         }
 
+    @Test
+    fun startSessionUsesPolicyAndDoesNotRestartAfterCompletion() =
+        runTest {
+
+            val policy =
+                ReviewSessionLaunchPolicy(
+                    dueLimit = 123,
+                    newLimit = 7,
+                )
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        emptyList(),
+
+                    cards =
+                        emptyMap(),
+
+                    failCardIds =
+                        emptySet(),
+
+                    launchPolicy =
+                        policy,
+                )
+
+            /*
+             * Lần đầu route được mở.
+             */
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                ReviewSessionUiState.Completed(
+                    reviewedCount = 0,
+                ),
+                viewModel.uiState.value,
+            )
+
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            assertEquals(
+                123,
+                fakeRepository.lastDueLimit,
+            )
+
+            assertEquals(
+                7,
+                fakeRepository.lastNewLimit,
+            )
+
+            /*
+             * Giả lập rời tab rồi quay lại.
+             *
+             * LaunchedEffect sẽ gọi startSession()
+             * một lần nữa.
+             */
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            /*
+             * Completed không được tự mở
+             * session mới.
+             */
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+        }
+
     private fun TestScope.rateGood(
         viewModel: ReviewSessionViewModel,
     ) {
@@ -335,6 +408,12 @@ class ReviewSessionViewModelTest {
         queue: List<LearningProgress>,
         cards: Map<Long, ReviewCard>,
         failCardIds: Set<Long>,
+        launchPolicy:
+        ReviewSessionLaunchPolicy =
+            ReviewSessionLaunchPolicy(
+                dueLimit = 10,
+                newLimit = 10,
+            ),
     ): ReviewSessionViewModel {
 
         fakeRepository =
@@ -356,6 +435,9 @@ class ReviewSessionViewModelTest {
                     reviewScheduler =
                         FakeReviewScheduler(),
                 ),
+
+            launchPolicy =
+                launchPolicy,
 
             clock =
                 clock,
@@ -404,6 +486,14 @@ class ReviewSessionViewModelTest {
             0
             private set
 
+        var lastDueLimit: Int? =
+            null
+            private set
+
+        var lastNewLimit: Int? =
+            null
+            private set
+
         val requestedCardIds =
             mutableListOf<Long>()
 
@@ -419,6 +509,12 @@ class ReviewSessionViewModelTest {
         ): List<LearningProgress> {
 
             getReviewQueueCallCount += 1
+
+            lastDueLimit =
+                dueLimit
+
+            lastNewLimit =
+                newLimit
 
             return queue
         }

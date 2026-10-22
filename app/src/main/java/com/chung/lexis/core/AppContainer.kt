@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.chung.lexis.core.database.LexisDatabase
 import com.chung.lexis.core.database.repository.RoomLexemeRepository
 import com.chung.lexis.core.database.repository.RoomReviewRepository
+import com.chung.lexis.domain.model.ReviewSessionLaunchPolicy
 import com.chung.lexis.domain.repository.LexemeRepository
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.scheduler.DefaultReviewScheduler
@@ -17,14 +18,13 @@ import java.time.Duration
 
 interface AppContainer {
 
-    val lexemeRepository:
-            LexemeRepository
+    val lexemeRepository: LexemeRepository
 
-    val reviewRepository:
-            ReviewRepository
+    val reviewRepository: ReviewRepository
 
-    val submitReviewUseCase:
-            SubmitReviewUseCase
+    val submitReviewUseCase: SubmitReviewUseCase
+
+    val reviewSessionLaunchPolicy: ReviewSessionLaunchPolicy
 }
 
 class DefaultAppContainer(
@@ -56,7 +56,7 @@ class DefaultAppContainer(
             database = database,
         )
     }
-    
+
     private val reviewScheduler:
             ReviewScheduler by lazy {
 
@@ -90,10 +90,22 @@ class DefaultAppContainer(
         )
     }
 
+    override val reviewSessionLaunchPolicy =
+        ReviewSessionLaunchPolicy(
+            dueLimit =
+                Int.MAX_VALUE,
+
+            newLimit =
+                DEFAULT_NEW_CARDS_PER_SESSION,
+        )
+
     companion object {
 
         private const val DATABASE_NAME =
             "lexis.db"
+
+        private const val DEFAULT_NEW_CARDS_PER_SESSION =
+            20
 
         /*
          * Production learning policy.

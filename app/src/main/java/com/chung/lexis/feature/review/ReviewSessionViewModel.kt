@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewCard
 import com.chung.lexis.domain.model.ReviewRating
+import com.chung.lexis.domain.model.ReviewSessionLaunchPolicy
 import com.chung.lexis.domain.model.ReviewState
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
@@ -61,6 +62,8 @@ class ReviewSessionViewModel(
     private val reviewRepository: ReviewRepository,
 
     private val submitReviewUseCase: SubmitReviewUseCase,
+
+    private val launchPolicy: ReviewSessionLaunchPolicy,
 
     private val clock: Clock = Clock.systemUTC(),
 ) : ViewModel() {
@@ -161,18 +164,7 @@ class ReviewSessionViewModel(
             }
         }
 
-    fun startSession(
-        dueLimit: Int,
-        newLimit: Int,
-    ) {
-
-        require(dueLimit >= 0) {
-            "dueLimit must be >= 0"
-        }
-
-        require(newLimit >= 0) {
-            "newLimit must be >= 0"
-        }
+    fun startSession() {
 
         if (
             _uiState.value != ReviewSessionUiState.Idle
@@ -191,9 +183,13 @@ class ReviewSessionViewModel(
                         .getReviewQueue(
                             now = clock.instant(),
 
-                            dueLimit = dueLimit,
+                            dueLimit =
+                                launchPolicy
+                                    .dueLimit,
 
-                            newLimit = newLimit,
+                            newLimit =
+                                launchPolicy
+                                    .newLimit,
                         )
 
                 val lexemeIds = queue.map {
@@ -839,6 +835,9 @@ class ReviewSessionViewModel(
 
         private val submitReviewUseCase:
         SubmitReviewUseCase,
+
+        private val launchPolicy:
+        ReviewSessionLaunchPolicy,
     ) : ViewModelProvider.Factory {
 
         @Suppress("UNCHECKED_CAST")
@@ -863,6 +862,9 @@ class ReviewSessionViewModel(
 
                 submitReviewUseCase =
                     submitReviewUseCase,
+
+                launchPolicy =
+                    launchPolicy,
             ) as T
         }
     }
