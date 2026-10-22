@@ -70,11 +70,18 @@ class ReviewBadgeViewModel(
                 scope =
                     viewModelScope,
 
+                /*
+                 * stopTimeout = 0: delay() trên Main dùng
+                 * uptimeMillis, không chạy khi máy ngủ sâu.
+                 *
+                 * Cancel upstream ngay khi app background để
+                 * lúc quay lại luôn tính lại theo clock thật.
+                 */
                 started =
                     SharingStarted
                         .WhileSubscribed(
                             stopTimeoutMillis =
-                                5_000L,
+                                0L,
                         ),
 
                 initialValue =

@@ -11,7 +11,15 @@ import com.chung.lexis.core.database.entity.LearningProgressEntity
 import com.chung.lexis.core.database.entity.LexemeEntity
 import com.chung.lexis.core.database.entity.ReviewStateColumn
 import com.chung.lexis.domain.model.ReviewState
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -19,8 +27,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneOffset
 
 @RunWith(AndroidJUnit4::class)
 class RoomReviewQueueTest {
@@ -832,6 +842,155 @@ class RoomReviewQueueTest {
             assertEquals(
                 3,
                 summary.totalAvailable,
+            )
+        }
+
+    @Test
+    fun reactiveSummaryUpdatesAfterRoomInvalidation() =
+        runBlocking {
+
+            val deckId =
+                insertDeck("English")
+
+            val lexemeId =
+                insertLexeme("apple")
+
+            addToDeck(
+                deckId = deckId,
+                lexemeId = lexemeId,
+            )
+
+            val clock =
+                Clock.fixed(
+                    now,
+                    ZoneOffset.UTC,
+                )
+
+            /*
+             * Đảm bảo initial emission đã xảy ra
+             * trước khi mình thay đổi DB.
+             */
+            val initialReceived =
+                CompletableDeferred<Unit>()
+
+            val collection =
+                async {
+
+                    repository
+                        .observeReviewDueSummary(
+                            clock = clock,
+                        )
+                        .onEach {
+                            if (
+                                !initialReceived
+                                    .isCompleted
+                            ) {
+                                initialReceived
+                                    .complete(Unit)
+                            }
+                        }
+                        .map { summary ->
+                            summary.dueCount
+                        }
+                        .distinctUntilChanged()
+                        .take(2)
+                        .toList()
+                }
+
+            withTimeout(2_000L) {
+                initialReceived.await()
+            }
+
+            /*
+             * Không gọi refresh().
+             *
+             * learning_progress thay đổi
+             * phải khiến Room invalidation
+             * tự phát summary mới.
+             */
+            insertProgress(
+                lexemeId = lexemeId,
+                state =
+                    ReviewStateColumn.REVIEW,
+                dueAt =
+                    now.minus(
+                        Duration.ofMinutes(1)
+                    ),
+            )
+
+            val counts =
+                withTimeout(2_000L) {
+                    collection.await()
+                }
+
+            assertEquals(
+                listOf(
+                    0,
+                    1,
+                ),
+                counts,
+            )
+        }
+
+
+    @Test
+    fun reactiveSummaryUpdatesWhenTimePassesWithoutDatabaseWrite() =
+        runBlocking {
+
+            val deckId =
+                insertDeck("English")
+
+            val lexemeId =
+                insertLexeme("apple")
+
+            addToDeck(
+                deckId = deckId,
+                lexemeId = lexemeId,
+            )
+
+            /*
+             * Dùng cùng system clock mà production dùng.
+             */
+            val dueAt =
+                Instant
+                    .now()
+                    .plusSeconds(2)
+
+            insertProgress(
+                lexemeId = lexemeId,
+                state =
+                    ReviewStateColumn.REVIEW,
+                dueAt = dueAt,
+            )
+
+            /*
+             * Sau đoạn này tuyệt đối không write DB nữa.
+             *
+             * Emission thứ hai chỉ có thể tới từ
+             * timer getNextDueAtAfter().
+             */
+            val counts =
+                withTimeout(6_000L) {
+
+                    repository
+                        .observeReviewDueSummary(
+                            clock =
+                                Clock.systemUTC(),
+                        )
+                        .map { summary ->
+                            summary.dueCount
+                        }
+                        .distinctUntilChanged()
+                        .take(2)
+                        .toList()
+                }
+
+            assertEquals(
+                listOf(
+                    0,
+                    1,
+                ),
+                counts,
             )
         }
 
