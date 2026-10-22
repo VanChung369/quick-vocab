@@ -16,8 +16,7 @@ fun ReviewRoute(
     Modifier = Modifier,
 ) {
 
-    val uiState by
-    viewModel
+    val uiState by viewModel
         .uiState
         .collectAsStateWithLifecycle()
 
@@ -30,16 +29,12 @@ fun ReviewRoute(
     }
 
     ReviewScreen(
-        uiState =
-            uiState,
+        uiState = uiState,
 
-        onRevealAnswer =
-            viewModel::revealAnswer,
+        onRevealAnswer = viewModel::revealAnswer,
 
-        onSubmitRating =
-            viewModel::submitRating,
+        onSubmitRating = viewModel::submitRating,
 
-        modifier =
-            modifier,
+        modifier = modifier,
     )
 }
