@@ -1,6 +1,7 @@
 package com.chung.lexis.domain.repository
 
 import com.chung.lexis.domain.model.LearningProgress
+import com.chung.lexis.domain.model.ReviewCard
 import com.chung.lexis.domain.model.ReviewDueSummary
 import com.chung.lexis.domain.model.ReviewLog
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +36,10 @@ interface ReviewRepository {
     suspend fun getReviewHistory(
         lexemeId: Long,
     ): List<ReviewLog>
+
+    suspend fun getReviewCard(
+        lexemeId: Long,
+    ): ReviewCard?
 }
 
 

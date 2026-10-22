@@ -5,8 +5,10 @@ import com.chung.lexis.core.database.LexisDatabase
 import com.chung.lexis.core.database.entity.EnrichmentStatusColumn
 import com.chung.lexis.core.database.entity.ReviewStateColumn
 import com.chung.lexis.core.database.mapper.toDomain
+import com.chung.lexis.core.database.mapper.toDomainResult
 import com.chung.lexis.core.database.mapper.toEntity
 import com.chung.lexis.domain.model.LearningProgress
+import com.chung.lexis.domain.model.ReviewCard
 import com.chung.lexis.domain.model.ReviewDueSummary
 import com.chung.lexis.domain.model.ReviewLog
 import com.chung.lexis.domain.repository.ReviewRepository
@@ -437,4 +439,84 @@ class RoomReviewRepository(
                 }
             }
             .distinctUntilChanged()
+
+    override suspend fun getReviewCard(
+        lexemeId: Long,
+    ): ReviewCard? =
+        database.withTransaction {
+
+            val lexemeEntity =
+                lexemeDao.getLexeme(
+                    lexemeId
+                ) ?: return@withTransaction null
+
+            val lexeme =
+                lexemeEntity
+                    .toDomainResult()
+                    .getOrElse { cause ->
+
+                        throw IllegalStateException(
+                            "Cannot map lexeme $lexemeId",
+                            cause,
+                        )
+                    }
+
+            val meanings =
+                lexemeDao
+                    .getMeanings(
+                        lexemeId
+                    )
+                    .map { entity ->
+                        entity.toDomain()
+                    }
+
+            val pronunciations =
+                lexemeDao
+                    .getPronunciations(
+                        lexemeId
+                    )
+                    .map { entity ->
+                        entity.toDomain()
+                    }
+
+            val examples =
+                lexemeDao
+                    .getExamples(
+                        lexemeId
+                    )
+                    .map { relation ->
+
+                        relation.example.toDomain(
+                            translation =
+                                relation.translation,
+                        )
+                    }
+
+            val progress =
+                reviewDao
+                    .getProgress(
+                        lexemeId
+                    )
+                    ?.toDomain()
+                    ?: LearningProgress(
+                        lexemeId = lexemeId,
+                    )
+
+            ReviewCard(
+                lexeme =
+                    lexeme,
+
+                meanings =
+                    meanings,
+
+                pronunciations =
+                    pronunciations,
+
+                examples =
+                    examples,
+
+                progress =
+                    progress,
+            )
+        }
 }
