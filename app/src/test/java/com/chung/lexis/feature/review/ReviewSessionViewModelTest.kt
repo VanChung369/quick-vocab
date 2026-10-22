@@ -296,6 +296,89 @@ class ReviewSessionViewModelTest {
         }
 
     @Test
+    fun retryAfterInitialLoadFailureRequeriesGlobalQueue() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        emptyList(),
+
+                    cards =
+                        emptyMap(),
+
+                    failCardIds =
+                        emptySet(),
+
+                    queueFailuresRemaining =
+                        1,
+                )
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                ReviewSessionUiState.Failed(
+                    ReviewSessionError.LOAD_FAILED
+                ),
+                viewModel.uiState.value,
+            )
+
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            /*
+             * retry() chưa tồn tại.
+             *
+             * Dùng reflection ở RED phase để test vẫn
+             * compile và fail bằng assertion thay vì
+             * fail compilation.
+             */
+            val retryMethod =
+                viewModel
+                    .javaClass
+                    .methods
+                    .firstOrNull {
+                        it.name == "retry" &&
+                                it.parameterCount == 0
+                    }
+
+            assertTrue(
+                "ReviewSessionViewModel must expose retry()",
+                retryMethod != null,
+            )
+
+            retryMethod ?: return@runTest
+
+            retryMethod.invoke(
+                viewModel
+            )
+
+            advanceUntilIdle()
+
+            /*
+             * Initial load failure:
+             * retry buộc phải query Room lại.
+             */
+            assertEquals(
+                2,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            assertEquals(
+                ReviewSessionUiState.Completed(
+                    reviewedCount = 0,
+                ),
+                viewModel.uiState.value,
+            )
+        }
+
+    @Test
     fun startSessionUsesPolicyAndDoesNotRestartAfterCompletion() =
         runTest {
 
@@ -414,6 +497,7 @@ class ReviewSessionViewModelTest {
                 dueLimit = 10,
                 newLimit = 10,
             ),
+        queueFailuresRemaining: Int = 0,
     ): ReviewSessionViewModel {
 
         fakeRepository =
@@ -421,6 +505,8 @@ class ReviewSessionViewModelTest {
                 queue = queue,
                 cards = cards,
                 failCardIds = failCardIds,
+                queueFailuresRemaining =
+                    queueFailuresRemaining,
             )
 
         return ReviewSessionViewModel(
@@ -472,7 +558,11 @@ class ReviewSessionViewModelTest {
         private val queue: List<LearningProgress>,
         private val cards: Map<Long, ReviewCard>,
         private val failCardIds: Set<Long>,
+        queueFailuresRemaining: Int = 0,
     ) : ReviewRepository {
+
+        private var queueFailuresRemaining =
+            queueFailuresRemaining
 
         private val progressById =
             queue
@@ -515,6 +605,15 @@ class ReviewSessionViewModelTest {
 
             lastNewLimit =
                 newLimit
+
+            if (queueFailuresRemaining > 0) {
+
+                queueFailuresRemaining -= 1
+
+                throw IllegalStateException(
+                    "Cannot load initial review queue"
+                )
+            }
 
             return queue
         }
