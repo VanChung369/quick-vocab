@@ -271,6 +271,27 @@ class ReviewSessionViewModel(
         }
     }
 
+    fun startAnotherSession() {
+
+        if (
+            _uiState.value !is
+                    ReviewSessionUiState.Completed
+        ) {
+            return
+        }
+
+        /*
+         * Đây là explicit user action.
+         *
+         * Khác với Route gọi startSession():
+         * Completed không tự restart.
+         */
+        _uiState.value =
+            ReviewSessionUiState.Idle
+
+        startSession()
+    }
+
     fun retry() {
 
         if (

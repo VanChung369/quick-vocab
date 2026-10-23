@@ -646,6 +646,97 @@ class ReviewSessionViewModelTest {
         }
 
     @Test
+    fun startAnotherSessionAfterCompletionQueriesFreshQueue() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    /*
+                     * Session #1 không có card.
+                     */
+                    queue =
+                        emptyList(),
+
+                    /*
+                     * Card A tồn tại trong DB,
+                     * nhưng chưa nằm trong queue #1.
+                     */
+                    cards =
+                        mapOf(
+                            A to card(A),
+                        ),
+
+                    failCardIds =
+                        emptySet(),
+                )
+
+            viewModel.startSession()
+
+            runCurrent()
+
+            assertEquals(
+                ReviewSessionUiState.Completed(
+                    reviewedCount = 0,
+                ),
+                viewModel.uiState.value,
+            )
+
+            assertEquals(
+                1,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            /*
+             * Thời gian trôi qua / DB thay đổi.
+             *
+             * A bây giờ đã eligible cho một
+             * session mới.
+             */
+            fakeRepository.replaceQueue(
+                listOf(
+                    progress(A),
+                )
+            )
+
+            viewModel.startAnotherSession()
+
+            runCurrent()
+
+            /*
+             * Session mới phải query Room lại.
+             */
+            assertEquals(
+                2,
+                fakeRepository
+                    .getReviewQueueCallCount,
+            )
+
+            val state =
+                viewModel
+                    .uiState
+                    .value
+
+            assertTrue(
+                "Expected Active(A) but was $state",
+                state is
+                        ReviewSessionUiState.Active &&
+                        state.card.lexeme.id == A,
+            )
+
+            state as
+                    ReviewSessionUiState.Active
+
+            /*
+             * Đây là session mới hoàn toàn.
+             */
+            assertEquals(
+                0,
+                state.reviewedCount,
+            )
+        }
+
+    @Test
     fun startSessionUsesPolicyAndDoesNotRestartAfterCompletion() =
         runTest {
 
@@ -828,7 +919,7 @@ class ReviewSessionViewModelTest {
         )
 
     private class FakeReviewRepository(
-        private val queue: List<LearningProgress>,
+        queue: List<LearningProgress>,
         private val cards: Map<Long, ReviewCard>,
         private val failCardIds: Set<Long>,
         queueFailuresRemaining: Int = 0,
@@ -836,6 +927,10 @@ class ReviewSessionViewModelTest {
         Map<Long, Int> =
             emptyMap(),
     ) : ReviewRepository {
+
+        private var queue:
+                List<LearningProgress> =
+            queue
 
         private var queueFailuresRemaining =
             queueFailuresRemaining
@@ -869,6 +964,22 @@ class ReviewSessionViewModelTest {
 
         var nextSaveReviewResult:
                 SaveReviewResult? = null
+
+        fun replaceQueue(
+            queue: List<LearningProgress>,
+        ) {
+
+            this.queue =
+                queue
+
+            queue.forEach { progress ->
+
+                progressById.putIfAbsent(
+                    progress.lexemeId,
+                    progress,
+                )
+            }
+        }
 
         fun failNextCardLoad(
             lexemeId: Long,
