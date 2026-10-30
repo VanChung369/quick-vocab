@@ -14,6 +14,7 @@ import com.chung.lexis.core.database.entity.MeaningKindColumn
 import com.chung.lexis.core.database.entity.PronunciationEntity
 import com.chung.lexis.core.database.entity.PronunciationTypeColumn
 import com.chung.lexis.core.database.entity.ReviewStateColumn
+import com.chung.lexis.domain.model.CorruptReviewDataException
 import com.chung.lexis.domain.model.EnrichmentState
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.LocalizedText
@@ -404,9 +405,12 @@ class RoomReviewCardTest {
                     )
                 }
 
+            val error =
+                result.exceptionOrNull()
+
             assertTrue(
-                result.exceptionOrNull() is
-                        IllegalStateException
+                error is CorruptReviewDataException &&
+                        error.cause is IllegalStateException
             )
         }
 
@@ -541,9 +545,12 @@ class RoomReviewCardTest {
                         )
                 }
 
+            val error =
+                result.exceptionOrNull()
+
             assertTrue(
-                result.exceptionOrNull() is
-                        IllegalArgumentException
+                error is CorruptReviewDataException &&
+                        error.cause is IllegalArgumentException
             )
         }
     

@@ -165,13 +165,33 @@ class LearningStepPolicyTest {
         )
     }
 
-    @Test(expected = IllegalArgumentException::class)
-    fun `current step must be inside configured steps`() {
+    @Test
+    fun `step outside configured steps is treated as last step`() {
 
-        policy.decide(
-            phase = ReviewState.LEARNING,
-            currentStep = 99,
-            rating = ReviewRating.GOOD,
+        val good =
+            policy.decide(
+                phase = ReviewState.LEARNING,
+                currentStep = 99,
+                rating = ReviewRating.GOOD,
+            )
+
+        assertTrue(
+            good is LearningStepDecision.Graduate
+        )
+
+        val hard =
+            policy.decide(
+                phase = ReviewState.LEARNING,
+                currentStep = 99,
+                rating = ReviewRating.HARD,
+            )
+
+        assertEquals(
+            LearningStepDecision.Schedule(
+                step = 1,
+                delay = Duration.ofMinutes(10),
+            ),
+            hard,
         )
     }
 

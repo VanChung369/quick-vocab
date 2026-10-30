@@ -1,9 +1,12 @@
 package com.chung.lexis.domain.usecase
 
+import com.chung.lexis.domain.model.CorruptReviewDataException
+import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewLog
 import com.chung.lexis.domain.model.ReviewRating
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
+import com.chung.lexis.domain.scheduler.ReviewSchedule
 import com.chung.lexis.domain.scheduler.ReviewScheduler
 import java.time.Instant
 
@@ -12,24 +15,93 @@ class SubmitReviewUseCase(
     private val reviewScheduler: ReviewScheduler,
 ) {
 
+    /**
+     * @param progress snapshot user đã thấy khi rating
+     * (ReviewCard.progress). Repository dùng nó làm mốc
+     * compare-and-set: write khác xen vào → StaleProgress.
+     */
     suspend operator fun invoke(
-        lexemeId: Long,
+        progress: LearningProgress,
         rating: ReviewRating,
         reviewedAt: Instant,
     ): SaveReviewResult {
 
-        val current =
-            reviewRepository.getProgress(lexemeId)
-                ?: return SaveReviewResult.LexemeNotFound
+        /*
+         * Clock máy có thể bị lùi (user chỉnh giờ, NTP sync).
+         * Không throw: kẹp về lastReviewedAt để
+         * thời điểm review không bao giờ đi lùi.
+         */
+        val effectiveReviewedAt =
+            progress.lastReviewedAt
+                ?.let { lastReviewedAt ->
+                    maxOf(
+                        reviewedAt,
+                        lastReviewedAt,
+                    )
+                }
+                ?: reviewedAt
 
-
-        current.lastReviewedAt?.let { lastReviewedAt ->
-            require(
-                reviewedAt.toEpochMilli() >= lastReviewedAt.toEpochMilli()
+        /*
+         * Scheduler là pure function:
+         * require/check fail ở đây là data hỏng,
+         * retry không giúp gì.
+         */
+        val schedule =
+            try {
+                scheduleChecked(
+                    current = progress,
+                    rating = rating,
+                    reviewedAt = effectiveReviewedAt,
+                )
+            } catch (
+                invalid: IllegalArgumentException,
             ) {
-                "reviewedAt cannot be before lastReviewedAt"
+                throw CorruptReviewDataException(
+                    lexemeId = progress.lexemeId,
+                    cause = invalid,
+                )
+            } catch (
+                invalid: IllegalStateException,
+            ) {
+                throw CorruptReviewDataException(
+                    lexemeId = progress.lexemeId,
+                    cause = invalid,
+                )
             }
-        }
+
+        val reviewLog =
+            ReviewLog(
+                lexemeId = progress.lexemeId,
+                rating = rating,
+
+                stateBefore =
+                    progress.state,
+
+                stateAfter =
+                    schedule.progress.state,
+
+                reviewedAt =
+                    effectiveReviewedAt,
+
+                elapsedDays =
+                    schedule.elapsedDays,
+
+                scheduledDays =
+                    schedule.scheduledDays,
+            )
+
+        return reviewRepository.saveReview(
+            previousProgress = progress,
+            nextProgress = schedule.progress,
+            reviewLog = reviewLog,
+        )
+    }
+
+    private fun scheduleChecked(
+        current: LearningProgress,
+        rating: ReviewRating,
+        reviewedAt: Instant,
+    ): ReviewSchedule {
 
         val schedule =
             reviewScheduler.schedule(
@@ -89,31 +161,6 @@ class SubmitReviewUseCase(
             "Scheduler must increment reviewCount exactly once"
         }
 
-        val reviewLog =
-            ReviewLog(
-                lexemeId = lexemeId,
-                rating = rating,
-
-                stateBefore =
-                    current.state,
-
-                stateAfter =
-                    schedule.progress.state,
-
-                reviewedAt =
-                    reviewedAt,
-
-                elapsedDays =
-                    schedule.elapsedDays,
-
-                scheduledDays =
-                    schedule.scheduledDays,
-            )
-
-        return reviewRepository.saveReview(
-            previousProgress = current,
-            nextProgress = schedule.progress,
-            reviewLog = reviewLog,
-        )
+        return schedule
     }
 }

@@ -7,6 +7,7 @@ import com.chung.lexis.core.database.entity.ReviewStateColumn
 import com.chung.lexis.core.database.mapper.toDomain
 import com.chung.lexis.core.database.mapper.toDomainResult
 import com.chung.lexis.core.database.mapper.toEntity
+import com.chung.lexis.domain.model.CorruptReviewDataException
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewCard
 import com.chung.lexis.domain.model.ReviewDueSummary
@@ -299,6 +300,24 @@ class RoomReviewRepository(
         }
     }
 
+    override suspend fun getUpcomingShortTerm(
+        now: Instant,
+    ): List<LearningProgress> =
+        reviewDao
+            .getUpcomingShortTerm(
+                nowEpochMillis =
+                    now.toEpochMilli(),
+
+                learningState =
+                    ReviewStateColumn.LEARNING,
+
+                relearningState =
+                    ReviewStateColumn.RELEARNING,
+            )
+            .map { entity ->
+                entity.toDomain()
+            }
+
     override suspend fun getReviewDueSummary(
         now: Instant,
     ): ReviewDueSummary =
@@ -450,73 +469,91 @@ class RoomReviewRepository(
                     lexemeId
                 ) ?: return@withTransaction null
 
-            val lexeme =
-                lexemeEntity
-                    .toDomainResult()
-                    .getOrElse { cause ->
+            val meaningEntities =
+                lexemeDao.getMeanings(
+                    lexemeId
+                )
 
-                        throw IllegalStateException(
-                            "Cannot map lexeme $lexemeId",
-                            cause,
-                        )
-                    }
+            val pronunciationEntities =
+                lexemeDao.getPronunciations(
+                    lexemeId
+                )
 
-            val meanings =
-                lexemeDao
-                    .getMeanings(
-                        lexemeId
-                    )
-                    .map { entity ->
-                        entity.toDomain()
-                    }
+            val exampleRelations =
+                lexemeDao.getExamples(
+                    lexemeId
+                )
 
-            val pronunciations =
-                lexemeDao
-                    .getPronunciations(
-                        lexemeId
-                    )
-                    .map { entity ->
-                        entity.toDomain()
-                    }
+            val progressEntity =
+                reviewDao.getProgress(
+                    lexemeId
+                )
 
-            val examples =
-                lexemeDao
-                    .getExamples(
-                        lexemeId
-                    )
-                    .map { relation ->
+            /*
+             * Đọc DB xong mới map.
+             *
+             * Phần dưới không có DB call nên
+             * require/check fail chắc chắn là data hỏng,
+             * không phải lỗi IO tạm thời.
+             */
+            try {
 
-                        relation.example.toDomain(
-                            translation =
-                                relation.translation,
-                        )
-                    }
+                val lexeme =
+                    lexemeEntity
+                        .toDomainResult()
+                        .getOrElse { cause ->
 
-            val progress =
-                reviewDao
-                    .getProgress(
-                        lexemeId
-                    )
-                    ?.toDomain()
-                    ?: LearningProgress(
-                        lexemeId = lexemeId,
-                    )
+                            throw IllegalStateException(
+                                "Cannot map lexeme $lexemeId",
+                                cause,
+                            )
+                        }
 
-            ReviewCard(
-                lexeme =
-                    lexeme,
+                ReviewCard(
+                    lexeme =
+                        lexeme,
 
-                meanings =
-                    meanings,
+                    meanings =
+                        meaningEntities.map { entity ->
+                            entity.toDomain()
+                        },
 
-                pronunciations =
-                    pronunciations,
+                    pronunciations =
+                        pronunciationEntities.map { entity ->
+                            entity.toDomain()
+                        },
 
-                examples =
-                    examples,
+                    examples =
+                        exampleRelations.map { relation ->
 
-                progress =
-                    progress,
-            )
+                            relation.example.toDomain(
+                                translation =
+                                    relation.translation,
+                            )
+                        },
+
+                    progress =
+                        progressEntity
+                            ?.toDomain()
+                            ?: LearningProgress(
+                                lexemeId = lexemeId,
+                            ),
+                )
+
+            } catch (
+                invalid: IllegalArgumentException,
+            ) {
+                throw CorruptReviewDataException(
+                    lexemeId = lexemeId,
+                    cause = invalid,
+                )
+            } catch (
+                invalid: IllegalStateException,
+            ) {
+                throw CorruptReviewDataException(
+                    lexemeId = lexemeId,
+                    cause = invalid,
+                )
+            }
         }
 }

@@ -1026,6 +1026,11 @@ class ReviewSessionViewModelTest {
             return queue
         }
 
+        override suspend fun getUpcomingShortTerm(
+            now: Instant,
+        ): List<LearningProgress> =
+            emptyList()
+
         override suspend fun getReviewDueSummary(
             now: Instant,
         ): ReviewDueSummary =
@@ -1098,7 +1103,16 @@ class ReviewSessionViewModelTest {
                 )
             }
 
-            return cards[lexemeId]
+            /*
+             * Giống Room: card mang progress đã lưu mới nhất.
+             */
+            return cards[lexemeId]?.let { card ->
+                card.copy(
+                    progress =
+                        progressById[lexemeId]
+                            ?: card.progress,
+                )
+            }
         }
     }
 

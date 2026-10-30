@@ -75,6 +75,32 @@ interface ReviewDao {
         limit: Int,
     ): List<LearningProgressEntity>
 
+    @Query(
+        """
+    SELECT p.*
+    FROM learning_progress AS p
+    WHERE p.state IN (
+        :learningState,
+        :relearningState
+    )
+      AND p.nextReviewAtEpochMillis IS NOT NULL
+      AND p.nextReviewAtEpochMillis > :nowEpochMillis
+      AND EXISTS (
+          SELECT 1
+          FROM deck_items AS di
+          WHERE di.lexemeId = p.lexemeId
+      )
+    ORDER BY
+        p.nextReviewAtEpochMillis ASC,
+        p.lexemeId ASC
+    """
+    )
+    suspend fun getUpcomingShortTerm(
+        nowEpochMillis: Long,
+        learningState: ReviewStateColumn,
+        relearningState: ReviewStateColumn,
+    ): List<LearningProgressEntity>
+
 
     @Query(
         """

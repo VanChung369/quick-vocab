@@ -19,6 +19,14 @@ interface ReviewRepository {
         newLimit: Int,
     ): List<LearningProgress>
 
+    /**
+     * LEARNING / RELEARNING chưa tới hạn tại [now]
+     * (chỉ card thuộc ít nhất một deck).
+     */
+    suspend fun getUpcomingShortTerm(
+        now: Instant,
+    ): List<LearningProgress>
+
     suspend fun getReviewDueSummary(
         now: Instant,
     ): ReviewDueSummary
@@ -37,6 +45,10 @@ interface ReviewRepository {
         lexemeId: Long,
     ): List<ReviewLog>
 
+    /**
+     * @throws com.chung.lexis.domain.model.CorruptReviewDataException
+     * nếu data đã lưu của lexeme vi phạm invariant.
+     */
     suspend fun getReviewCard(
         lexemeId: Long,
     ): ReviewCard?

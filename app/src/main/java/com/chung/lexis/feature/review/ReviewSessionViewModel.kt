@@ -1,8 +1,10 @@
 package com.chung.lexis.feature.review
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.chung.lexis.domain.model.CorruptReviewDataException
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewCard
 import com.chung.lexis.domain.model.ReviewRating
@@ -197,10 +199,13 @@ class ReviewSessionViewModel(
 
             try {
 
+                val now =
+                    clock.instant()
+
                 val queue =
                     reviewRepository
                         .getReviewQueue(
-                            now = clock.instant(),
+                            now = now,
 
                             dueLimit =
                                 launchPolicy
@@ -224,6 +229,25 @@ class ReviewSessionViewModel(
                     "Review queue contains duplicate lexemeId"
                 }
 
+                /*
+                 * Short-term card chưa tới hạn
+                 * (vd. process bị kill khi đang chờ step 1m)
+                 * → nạp lại như repeat của session này,
+                 * thay vì Completed sớm.
+                 *
+                 * dueLimit = 0 → session không lấy due card,
+                 * nên cũng không lấy short-term.
+                 */
+                val upcomingShortTerm =
+                    if (launchPolicy.dueLimit == 0) {
+                        emptyList()
+                    } else {
+                        reviewRepository
+                            .getUpcomingShortTerm(
+                                now = now,
+                            )
+                    }
+
                 pendingCards.clear()
                 scheduledRepeats.clear()
 
@@ -238,6 +262,18 @@ class ReviewSessionViewModel(
                                     nextSequence++,
                             )
                 }
+
+                upcomingShortTerm
+                    .filter { progress ->
+                        progress.lexemeId !in
+                                lexemeIds
+                    }
+                    .forEach { progress ->
+
+                        updateScheduledRepeat(
+                            progress = progress,
+                        )
+                    }
 
                 pendingCards.sortWith(
                     queueComparator
@@ -403,11 +439,14 @@ class ReviewSessionViewModel(
                 try {
 
                     submitReviewUseCase(
-                        lexemeId =
+                        /*
+                         * Snapshot user đang thấy:
+                         * write khác xen vào → StaleProgress.
+                         */
+                        progress =
                             current
                                 .card
-                                .lexeme
-                                .id,
+                                .progress,
 
                         rating =
                             rating,
@@ -422,6 +461,24 @@ class ReviewSessionViewModel(
                 ) {
 
                     throw cancellation
+
+                } catch (
+                    corrupt:
+                    CorruptReviewDataException,
+                ) {
+
+                    /*
+                     * Retry rating không bao giờ thành công
+                     * → bỏ qua card, đi tiếp session.
+                     */
+                    logSkippedCard(corrupt)
+
+                    _uiState.value =
+                        ReviewSessionUiState.Loading
+
+                    loadNextCardSafely()
+
+                    return@launch
 
                 } catch (_: Exception) {
 
@@ -725,10 +782,9 @@ class ReviewSessionViewModel(
                     pendingCards.first()
 
                 val card =
-                    reviewRepository
-                        .getReviewCard(
-                            item.lexemeId
-                        )
+                    getReviewCardOrSkip(
+                        item.lexemeId
+                    )
 
                 if (card == null) {
 
@@ -866,10 +922,9 @@ class ReviewSessionViewModel(
     ) {
 
         val card =
-            reviewRepository
-                .getReviewCard(
-                    lexemeId
-                )
+            getReviewCardOrSkip(
+                lexemeId
+            )
 
         if (card == null) {
 
@@ -900,6 +955,45 @@ class ReviewSessionViewModel(
                     ReviewSessionError
                         .STALE_PROGRESS,
             )
+    }
+
+    /*
+     * Card có data hỏng → retry không bao giờ thành công.
+     *
+     * Log rồi trả null để caller bỏ qua nó
+     * giống card đã bị xoá, thay vì kẹt cả
+     * session ở LOAD_FAILED.
+     */
+    private suspend fun getReviewCardOrSkip(
+        lexemeId: Long,
+    ): ReviewCard? =
+        try {
+
+            reviewRepository
+                .getReviewCard(
+                    lexemeId
+                )
+
+        } catch (
+            corrupt:
+            CorruptReviewDataException,
+        ) {
+
+            logSkippedCard(corrupt)
+
+            null
+        }
+
+    private fun logSkippedCard(
+        corrupt: CorruptReviewDataException,
+    ) {
+
+        Log.e(
+            TAG,
+            "Skip lexeme ${corrupt.lexemeId}: " +
+                    "invalid review data",
+            corrupt,
+        )
     }
 
     private fun LearningProgress.toSessionQueueItem(
@@ -992,5 +1086,9 @@ class ReviewSessionViewModel(
                     launchPolicy,
             ) as T
         }
+    }
+
+    private companion object {
+        const val TAG = "ReviewSession"
     }
 }

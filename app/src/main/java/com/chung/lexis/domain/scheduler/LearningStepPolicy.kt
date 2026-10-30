@@ -62,8 +62,19 @@ class LearningStepPolicy(
 
         validateCurrentStep(
             currentStep = currentStep,
-            steps = steps,
         )
+
+        /*
+         * Step đã lưu có thể nằm ngoài cấu hình hiện tại
+         * (vd. rút ngắn learning steps khi card đang ở step cũ).
+         *
+         * Coi như đang ở step cuối:
+         * GOOD → Graduate, HARD → lặp step cuối.
+         */
+        val step =
+            currentStep?.coerceAtMost(
+                steps.lastIndex
+            )
 
         return when (rating) {
 
@@ -75,13 +86,13 @@ class LearningStepPolicy(
 
             ReviewRating.HARD ->
                 schedule(
-                    step = currentStep ?: 0,
+                    step = step ?: 0,
                     steps = steps,
                 )
 
             ReviewRating.GOOD ->
                 good(
-                    currentStep = currentStep,
+                    currentStep = step,
                     steps = steps,
                 )
 
@@ -126,14 +137,13 @@ class LearningStepPolicy(
 
     private fun validateCurrentStep(
         currentStep: Int?,
-        steps: List<Duration>,
     ) {
         if (currentStep == null) {
             return
         }
 
-        require(currentStep in steps.indices) {
-            "currentStep $currentStep is outside configured steps"
+        require(currentStep >= 0) {
+            "currentStep $currentStep must be >= 0"
         }
     }
 }
