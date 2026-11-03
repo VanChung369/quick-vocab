@@ -53,6 +53,23 @@ interface ReviewDao {
         lexemeId: Long,
     ): List<ReviewLogEntity>
 
+    /*
+     * Số lexeme có review đầu tiên (rời NEW)
+     * từ thời điểm cho trước.
+     */
+    @Query(
+        """
+        SELECT COUNT(DISTINCT lexemeId)
+        FROM review_logs
+        WHERE stateBefore = :newState
+          AND reviewedAtEpochMillis >= :sinceEpochMillis
+        """
+    )
+    suspend fun countFirstReviewsSince(
+        sinceEpochMillis: Long,
+        newState: ReviewStateColumn,
+    ): Int
+
     @Upsert
     suspend fun upsertQuarantine(
         quarantine: ReviewQuarantineEntity,

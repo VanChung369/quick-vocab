@@ -4,6 +4,12 @@ import java.time.Duration
 
 data class ReviewSessionLaunchPolicy(
     val dueLimit: Int,
+
+    /*
+     * Số từ mới tối đa mỗi ngày (theo giờ máy),
+     * không phải mỗi session: mở lại app
+     * không có thêm từ mới nếu hôm nay đã đủ.
+     */
     val newLimit: Int,
 
     /*

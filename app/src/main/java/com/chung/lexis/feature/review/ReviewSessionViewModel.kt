@@ -67,7 +67,11 @@ class ReviewSessionViewModel(
 
     private val launchPolicy: ReviewSessionLaunchPolicy,
 
-    private val clock: Clock = Clock.systemUTC(),
+    /*
+     * Zone của clock quyết định "hôm nay"
+     * cho giới hạn từ mới mỗi ngày.
+     */
+    private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModel() {
 
     private enum class SessionQueueKind {
@@ -212,8 +216,9 @@ class ReviewSessionViewModel(
                                     .dueLimit,
 
                             newLimit =
-                                launchPolicy
-                                    .newLimit,
+                                remainingNewToday(
+                                    now = now,
+                                ),
                         )
 
                 val lexemeIds = queue.map {
@@ -305,6 +310,37 @@ class ReviewSessionViewModel(
                     )
             }
         }
+    }
+
+    /*
+     * newLimit là budget của cả ngày:
+     * trừ đi từ mới đã học từ 0h hôm nay,
+     * để process death / mở lại app
+     * không cấp thêm newLimit từ mới.
+     */
+    private suspend fun remainingNewToday(
+        now: Instant,
+    ): Int {
+
+        if (launchPolicy.newLimit == 0) {
+            return 0
+        }
+
+        val startOfDay =
+            now
+                .atZone(clock.zone)
+                .toLocalDate()
+                .atStartOfDay(clock.zone)
+                .toInstant()
+
+        val startedToday =
+            reviewRepository
+                .countNewCardsStartedSince(
+                    since = startOfDay,
+                )
+
+        return (launchPolicy.newLimit - startedToday)
+            .coerceAtLeast(0)
     }
 
     fun startAnotherSession() {

@@ -46,6 +46,14 @@ interface ReviewRepository {
     ): List<ReviewLog>
 
     /**
+     * Số từ mới đã được học lần đầu từ [since]
+     * (review log có stateBefore = NEW).
+     */
+    suspend fun countNewCardsStartedSince(
+        since: Instant,
+    ): Int
+
+    /**
      * @throws com.chung.lexis.domain.model.CorruptReviewDataException
      * nếu data đã lưu của lexeme vi phạm invariant.
      */

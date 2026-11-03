@@ -180,6 +180,11 @@ class SubmitReviewUseCaseTest {
         ): List<ReviewLog> =
             error("Not used")
 
+        override suspend fun countNewCardsStartedSince(
+            since: Instant,
+        ): Int =
+            error("Not used")
+
         override suspend fun getReviewCard(
             lexemeId: Long,
         ): ReviewCard? =

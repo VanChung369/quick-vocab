@@ -99,7 +99,7 @@ class DefaultAppContainer(
                 Int.MAX_VALUE,
 
             newLimit =
-                DEFAULT_NEW_CARDS_PER_SESSION,
+                DEFAULT_NEW_CARDS_PER_DAY,
 
             learnAheadLimit =
                 DEFAULT_LEARN_AHEAD_LIMIT,
@@ -110,7 +110,7 @@ class DefaultAppContainer(
         private const val DATABASE_NAME =
             "lexis.db"
 
-        private const val DEFAULT_NEW_CARDS_PER_SESSION =
+        private const val DEFAULT_NEW_CARDS_PER_DAY =
             20
 
         /*

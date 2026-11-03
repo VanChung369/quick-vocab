@@ -143,6 +143,17 @@ class RoomReviewRepository(
                 entity.toDomain()
             }
 
+    override suspend fun countNewCardsStartedSince(
+        since: Instant,
+    ): Int =
+        reviewDao.countFirstReviewsSince(
+            sinceEpochMillis =
+                since.toEpochMilli(),
+
+            newState =
+                ReviewStateColumn.NEW,
+        )
+
     private fun validateReview(
         previousProgress: LearningProgress,
         nextProgress: LearningProgress,

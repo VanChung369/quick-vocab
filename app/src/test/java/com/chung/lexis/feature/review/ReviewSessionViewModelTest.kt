@@ -1186,6 +1186,11 @@ class ReviewSessionViewModelTest {
         ): List<ReviewLog> =
             emptyList()
 
+        override suspend fun countNewCardsStartedSince(
+            since: Instant,
+        ): Int =
+            0
+
         override suspend fun quarantineReviewCard(
             lexemeId: Long,
             reason: String,
