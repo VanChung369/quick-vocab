@@ -471,7 +471,7 @@ class ReviewSessionViewModel(
                      * Retry rating không bao giờ thành công
                      * → bỏ qua card, đi tiếp session.
                      */
-                    logSkippedCard(corrupt)
+                    skipCorruptCard(corrupt)
 
                     _uiState.value =
                         ReviewSessionUiState.Loading
@@ -704,7 +704,7 @@ class ReviewSessionViewModel(
     }
 
     private fun promoteDueRepeats(
-        now: Instant,
+        dueBy: Instant,
     ) {
 
         val dueRepeats =
@@ -714,7 +714,7 @@ class ReviewSessionViewModel(
 
                     !repeat
                         .dueAt
-                        .isAfter(now)
+                        .isAfter(dueBy)
                 }
                 .sortedWith(
                     compareBy<ScheduledRepeat> {
@@ -771,8 +771,26 @@ class ReviewSessionViewModel(
                 clock.instant()
 
             promoteDueRepeats(
-                now = now,
+                dueBy = now,
             )
+
+            /*
+             * Hết card khác → học trước short-term repeat
+             * tới hạn trong learnAheadLimit,
+             * thay vì Waiting cả learning step.
+             */
+            if (
+                pendingCards.isEmpty()
+            ) {
+
+                promoteDueRepeats(
+                    dueBy =
+                        now.plus(
+                            launchPolicy
+                                .learnAheadLimit
+                        ),
+                )
+            }
 
             if (
                 pendingCards.isNotEmpty()
@@ -856,10 +874,22 @@ class ReviewSessionViewModel(
                 return
             }
 
+            /*
+             * Repeat học được ngay khi vào
+             * learn-ahead window, trước dueAt thật.
+             */
+            val nextAvailableAt =
+                nextRepeat
+                    .dueAt
+                    .minus(
+                        launchPolicy
+                            .learnAheadLimit
+                    )
+
             _uiState.value =
                 ReviewSessionUiState.Waiting(
                     nextDueAt =
-                        nextRepeat.dueAt,
+                        nextAvailableAt,
 
                     reviewedCount =
                         reviewedCount,
@@ -870,7 +900,7 @@ class ReviewSessionViewModel(
 
             awaitDueOrForeground(
                 dueAt =
-                    nextRepeat.dueAt,
+                    nextAvailableAt,
             )
 
             /*
@@ -960,7 +990,7 @@ class ReviewSessionViewModel(
     /*
      * Card có data hỏng → retry không bao giờ thành công.
      *
-     * Log rồi trả null để caller bỏ qua nó
+     * Skip rồi trả null để caller bỏ qua nó
      * giống card đã bị xoá, thay vì kẹt cả
      * session ở LOAD_FAILED.
      */
@@ -979,12 +1009,17 @@ class ReviewSessionViewModel(
             CorruptReviewDataException,
         ) {
 
-            logSkippedCard(corrupt)
+            skipCorruptCard(corrupt)
 
             null
         }
 
-    private fun logSkippedCard(
+    /*
+     * Log và cách ly card: queue / badge của
+     * session sau bỏ qua nó, thay vì load rồi
+     * skip lại mãi.
+     */
+    private suspend fun skipCorruptCard(
         corrupt: CorruptReviewDataException,
     ) {
 
@@ -994,6 +1029,42 @@ class ReviewSessionViewModel(
                     "invalid review data",
             corrupt,
         )
+
+        try {
+
+            reviewRepository
+                .quarantineReviewCard(
+                    lexemeId =
+                        corrupt.lexemeId,
+
+                    reason =
+                        (corrupt.cause ?: corrupt)
+                            .toString(),
+
+                    detectedAt =
+                        clock.instant(),
+                )
+
+        } catch (
+            cancellation:
+            CancellationException,
+        ) {
+
+            throw cancellation
+
+        } catch (failure: Exception) {
+
+            /*
+             * Không cách ly được vẫn skip card,
+             * chỉ là session sau sẽ gặp lại nó.
+             */
+            Log.e(
+                TAG,
+                "Cannot quarantine lexeme " +
+                        corrupt.lexemeId,
+                failure,
+            )
+        }
     }
 
     private fun LearningProgress.toSessionQueueItem(

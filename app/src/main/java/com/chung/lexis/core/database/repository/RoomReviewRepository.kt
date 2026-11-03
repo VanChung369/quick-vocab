@@ -2,7 +2,7 @@ package com.chung.lexis.core.database.repository
 
 import androidx.room.withTransaction
 import com.chung.lexis.core.database.LexisDatabase
-import com.chung.lexis.core.database.entity.EnrichmentStatusColumn
+import com.chung.lexis.core.database.entity.ReviewQuarantineEntity
 import com.chung.lexis.core.database.entity.ReviewStateColumn
 import com.chung.lexis.core.database.mapper.toDomain
 import com.chung.lexis.core.database.mapper.toDomainResult
@@ -12,6 +12,7 @@ import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewCard
 import com.chung.lexis.domain.model.ReviewDueSummary
 import com.chung.lexis.domain.model.ReviewLog
+import com.chung.lexis.domain.model.requireReviewed
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -190,6 +191,12 @@ class RoomReviewRepository(
             "nextProgress.lastReviewedAt must match " +
                     "ReviewLog.reviewedAt"
         }
+
+        /*
+         * Không lưu progress mà lần đọc sau
+         * coi là hỏng hoặc không due query nào thấy.
+         */
+        nextProgress.requireReviewed()
     }
 
     override suspend fun getReviewQueue(
@@ -260,9 +267,6 @@ class RoomReviewRepository(
                     emptyList()
                 } else {
                     reviewDao.getNewLexemeIds(
-                        readyStatus =
-                            EnrichmentStatusColumn.READY,
-
                         newState =
                             ReviewStateColumn.NEW,
 
@@ -349,9 +353,6 @@ class RoomReviewRepository(
 
             val newAvailable =
                 reviewDao.countNewAvailable(
-                    readyStatus =
-                        EnrichmentStatusColumn.READY,
-
                     newState =
                         ReviewStateColumn.NEW,
                 )
@@ -381,6 +382,8 @@ class RoomReviewRepository(
                 "learning_progress",
                 "deck_items",
                 "lexemes",
+                "meanings",
+                "review_quarantine",
             )
             .flatMapLatest {
                 flow {
@@ -556,4 +559,19 @@ class RoomReviewRepository(
                 )
             }
         }
+
+    override suspend fun quarantineReviewCard(
+        lexemeId: Long,
+        reason: String,
+        detectedAt: Instant,
+    ) {
+        reviewDao.upsertQuarantine(
+            ReviewQuarantineEntity(
+                lexemeId = lexemeId,
+                reason = reason,
+                detectedAtEpochMillis =
+                    detectedAt.toEpochMilli(),
+            )
+        )
+    }
 }

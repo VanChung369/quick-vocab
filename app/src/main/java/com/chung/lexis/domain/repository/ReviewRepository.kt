@@ -52,6 +52,16 @@ interface ReviewRepository {
     suspend fun getReviewCard(
         lexemeId: Long,
     ): ReviewCard?
+
+    /**
+     * Loại lexeme có review data hỏng khỏi queue và
+     * due summary, để session sau không load rồi skip lại.
+     */
+    suspend fun quarantineReviewCard(
+        lexemeId: Long,
+        reason: String,
+        detectedAt: Instant,
+    )
 }
 
 

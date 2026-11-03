@@ -1,5 +1,6 @@
 package com.chung.lexis.core.database.repository
 
+import android.database.sqlite.SQLiteConstraintException
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -470,7 +471,7 @@ class RoomReviewCardTest {
             )
 
     @Test
-    fun reviewCardRejectsPronunciationWhoseMeaningBelongsToAnotherLexeme() =
+    fun pronunciationWhoseMeaningBelongsToAnotherLexemeIsRejected() =
         runBlocking {
 
             val appleId =
@@ -505,52 +506,48 @@ class RoomReviewCardTest {
                     .single()
 
             /*
-             * Hai FK đều hợp lệ riêng rẽ:
-             *
-             * appleId tồn tại
-             * bananaMeaningId tồn tại
-             *
-             * Nhưng relation semantic là sai.
+             * appleId và bananaMeaningId đều tồn tại,
+             * nhưng meaning không thuộc apple:
+             * composite FK (meaningId, lexemeId)
+             * phải chặn ngay lúc ghi.
              */
-            database
-                .lexemeDao()
-                .insertPronunciations(
-                    listOf(
-                        PronunciationEntity(
-                            lexemeId =
-                                appleId,
-
-                            meaningId =
-                                bananaMeaningId,
-
-                            type =
-                                PronunciationTypeColumn.IPA,
-
-                            value =
-                                "/test/",
-
-                            languageTag =
-                                LANGUAGE_TAG,
-                        )
-                    )
-                )
-
             val result =
                 runCatching {
 
-                    repository
-                        .getReviewCard(
-                            lexemeId =
-                                appleId,
+                    database
+                        .lexemeDao()
+                        .insertPronunciations(
+                            listOf(
+                                PronunciationEntity(
+                                    lexemeId =
+                                        appleId,
+
+                                    meaningId =
+                                        bananaMeaningId,
+
+                                    type =
+                                        PronunciationTypeColumn.IPA,
+
+                                    value =
+                                        "/test/",
+
+                                    languageTag =
+                                        LANGUAGE_TAG,
+                                )
+                            )
                         )
                 }
 
-            val error =
-                result.exceptionOrNull()
+            assertTrue(
+                result.exceptionOrNull() is
+                        SQLiteConstraintException
+            )
 
             assertTrue(
-                error is CorruptReviewDataException &&
-                        error.cause is IllegalArgumentException
+                database
+                    .lexemeDao()
+                    .getPronunciations(appleId)
+                    .isEmpty()
             )
         }
     

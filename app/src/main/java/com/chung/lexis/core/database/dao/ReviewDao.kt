@@ -4,11 +4,18 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Upsert
-import com.chung.lexis.core.database.entity.EnrichmentStatusColumn
 import com.chung.lexis.core.database.entity.LearningProgressEntity
 import com.chung.lexis.core.database.entity.ReviewLogEntity
+import com.chung.lexis.core.database.entity.ReviewQuarantineEntity
 import com.chung.lexis.core.database.entity.ReviewStateColumn
 
+/*
+ * Mọi query queue / summary chỉ lấy lexeme học được:
+ *
+ * - thuộc ít nhất một deck
+ * - có ít nhất một meaning (flashcard phải có đáp án)
+ * - không bị cách ly vì data hỏng
+ */
 @Dao
 interface ReviewDao {
 
@@ -46,6 +53,11 @@ interface ReviewDao {
         lexemeId: Long,
     ): List<ReviewLogEntity>
 
+    @Upsert
+    suspend fun upsertQuarantine(
+        quarantine: ReviewQuarantineEntity,
+    )
+
 
     @Query(
         """
@@ -61,6 +73,16 @@ interface ReviewDao {
           SELECT 1
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
+      )
+      AND EXISTS (
+          SELECT 1
+          FROM meanings AS m
+          WHERE m.lexemeId = p.lexemeId
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM review_quarantine AS q
+          WHERE q.lexemeId = p.lexemeId
       )
     ORDER BY
         p.nextReviewAtEpochMillis ASC,
@@ -90,6 +112,16 @@ interface ReviewDao {
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
       )
+      AND EXISTS (
+          SELECT 1
+          FROM meanings AS m
+          WHERE m.lexemeId = p.lexemeId
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM review_quarantine AS q
+          WHERE q.lexemeId = p.lexemeId
+      )
     ORDER BY
         p.nextReviewAtEpochMillis ASC,
         p.lexemeId ASC
@@ -114,6 +146,16 @@ interface ReviewDao {
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
       )
+      AND EXISTS (
+          SELECT 1
+          FROM meanings AS m
+          WHERE m.lexemeId = p.lexemeId
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM review_quarantine AS q
+          WHERE q.lexemeId = p.lexemeId
+      )
     ORDER BY
         p.nextReviewAtEpochMillis ASC,
         p.lexemeId ASC
@@ -126,6 +168,11 @@ interface ReviewDao {
         limit: Int,
     ): List<LearningProgressEntity>
 
+    /*
+     * Học được = có meaning, không phụ thuộc
+     * enrichmentStatus: từ user tự nhập nghĩa
+     * học được ngay khi enrichment còn chạy.
+     */
     @Query(
         """
     SELECT l.id
@@ -137,10 +184,19 @@ interface ReviewDao {
     LEFT JOIN learning_progress AS p
         ON p.lexemeId = l.id
 
-    WHERE l.enrichmentStatus = :readyStatus
-      AND (
+    WHERE (
           p.lexemeId IS NULL
           OR p.state = :newState
+      )
+      AND EXISTS (
+          SELECT 1
+          FROM meanings AS m
+          WHERE m.lexemeId = l.id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM review_quarantine AS q
+          WHERE q.lexemeId = l.id
       )
 
     GROUP BY l.id
@@ -153,7 +209,6 @@ interface ReviewDao {
     """
     )
     suspend fun getNewLexemeIds(
-        readyStatus: EnrichmentStatusColumn,
         newState: ReviewStateColumn,
         limit: Int,
     ): List<Long>
@@ -172,6 +227,16 @@ interface ReviewDao {
           SELECT 1
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
+      )
+      AND EXISTS (
+          SELECT 1
+          FROM meanings AS m
+          WHERE m.lexemeId = p.lexemeId
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM review_quarantine AS q
+          WHERE q.lexemeId = p.lexemeId
       )
     """
     )
@@ -193,6 +258,16 @@ interface ReviewDao {
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
       )
+      AND EXISTS (
+          SELECT 1
+          FROM meanings AS m
+          WHERE m.lexemeId = p.lexemeId
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM review_quarantine AS q
+          WHERE q.lexemeId = p.lexemeId
+      )
     """
     )
     suspend fun countDueReview(
@@ -211,15 +286,23 @@ interface ReviewDao {
     LEFT JOIN learning_progress AS p
         ON p.lexemeId = l.id
 
-    WHERE l.enrichmentStatus = :readyStatus
-      AND (
+    WHERE (
           p.lexemeId IS NULL
           OR p.state = :newState
+      )
+      AND EXISTS (
+          SELECT 1
+          FROM meanings AS m
+          WHERE m.lexemeId = l.id
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM review_quarantine AS q
+          WHERE q.lexemeId = l.id
       )
     """
     )
     suspend fun countNewAvailable(
-        readyStatus: EnrichmentStatusColumn,
         newState: ReviewStateColumn,
     ): Int
 
@@ -246,6 +329,20 @@ interface ReviewDao {
           SELECT 1
           FROM deck_items AS di
           WHERE di.lexemeId =
+                p.lexemeId
+      )
+
+      AND EXISTS (
+          SELECT 1
+          FROM meanings AS m
+          WHERE m.lexemeId =
+                p.lexemeId
+      )
+
+      AND NOT EXISTS (
+          SELECT 1
+          FROM review_quarantine AS q
+          WHERE q.lexemeId =
                 p.lexemeId
       )
     """

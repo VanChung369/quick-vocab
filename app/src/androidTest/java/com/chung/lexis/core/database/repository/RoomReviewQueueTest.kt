@@ -9,6 +9,8 @@ import com.chung.lexis.core.database.entity.DeckItemEntity
 import com.chung.lexis.core.database.entity.EnrichmentStatusColumn
 import com.chung.lexis.core.database.entity.LearningProgressEntity
 import com.chung.lexis.core.database.entity.LexemeEntity
+import com.chung.lexis.core.database.entity.MeaningEntity
+import com.chung.lexis.core.database.entity.MeaningKindColumn
 import com.chung.lexis.core.database.entity.ReviewStateColumn
 import com.chung.lexis.domain.model.ReviewState
 import kotlinx.coroutines.CompletableDeferred
@@ -408,34 +410,39 @@ class RoomReviewQueueTest {
         }
 
     @Test
-    fun pendingNewLexemeIsNotReturned() =
+    fun newLexemeWithoutMeaningIsNotReturned() =
         runBlocking {
 
             val deckId =
                 insertDeck("English")
 
-            val readyLexemeId =
+            /*
+             * Học được = có meaning,
+             * không phụ thuộc enrichmentStatus.
+             */
+            val pendingWithMeaningId =
                 insertLexeme(
                     text = "apple",
-                    enrichmentStatus =
-                        EnrichmentStatusColumn.READY,
-                )
-
-            val pendingLexemeId =
-                insertLexeme(
-                    text = "banana",
                     enrichmentStatus =
                         EnrichmentStatusColumn.PENDING,
                 )
 
+            val readyWithoutMeaningId =
+                insertLexeme(
+                    text = "banana",
+                    enrichmentStatus =
+                        EnrichmentStatusColumn.READY,
+                    withMeaning = false,
+                )
+
             addToDeck(
                 deckId = deckId,
-                lexemeId = readyLexemeId,
+                lexemeId = pendingWithMeaningId,
             )
 
             addToDeck(
                 deckId = deckId,
-                lexemeId = pendingLexemeId,
+                lexemeId = readyWithoutMeaningId,
             )
 
             val queue =
@@ -448,14 +455,14 @@ class RoomReviewQueueTest {
             assertTrue(
                 queue.any {
                     it.lexemeId ==
-                            readyLexemeId
+                            pendingWithMeaningId
                 }
             )
 
             assertFalse(
                 queue.any {
                     it.lexemeId ==
-                            pendingLexemeId
+                            readyWithoutMeaningId
                 }
             )
         }
@@ -605,28 +612,58 @@ class RoomReviewQueueTest {
                 )
             )
 
+    /*
+     * Queue chỉ lấy lexeme có meaning
+     * → mặc định insert kèm một meaning.
+     */
     private suspend fun insertLexeme(
         text: String,
         enrichmentStatus:
         EnrichmentStatusColumn =
             EnrichmentStatusColumn.READY,
-    ): Long =
-        database
-            .lexemeDao()
-            .insertLexeme(
-                LexemeEntity(
-                    text = text,
+        withMeaning: Boolean = true,
+    ): Long {
 
-                    normalizedText =
-                        text.lowercase(),
+        val lexemeId =
+            database
+                .lexemeDao()
+                .insertLexeme(
+                    LexemeEntity(
+                        text = text,
 
-                    languageTag =
-                        LANGUAGE_TAG,
+                        normalizedText =
+                            text.lowercase(),
 
-                    enrichmentStatus =
-                        enrichmentStatus,
+                        languageTag =
+                            LANGUAGE_TAG,
+
+                        enrichmentStatus =
+                            enrichmentStatus,
+                    )
                 )
-            )
+
+        if (withMeaning) {
+
+            database
+                .lexemeDao()
+                .insertMeanings(
+                    listOf(
+                        MeaningEntity(
+                            lexemeId = lexemeId,
+
+                            kind =
+                                MeaningKindColumn.TRANSLATION,
+
+                            languageTag = "vi",
+
+                            text = "nghĩa của $text",
+                        )
+                    )
+                )
+        }
+
+        return lexemeId
+    }
 
     private suspend fun addToDeck(
         deckId: Long,
@@ -732,6 +769,7 @@ class RoomReviewQueueTest {
                     text = "new-pending",
                     enrichmentStatus =
                         EnrichmentStatusColumn.PENDING,
+                    withMeaning = false,
                 )
 
             val orphan =

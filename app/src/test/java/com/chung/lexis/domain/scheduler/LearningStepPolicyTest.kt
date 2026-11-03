@@ -21,7 +21,7 @@ class LearningStepPolicyTest {
         )
 
     @Test
-    fun `new good schedules first learning step`() {
+    fun `new good schedules second learning step`() {
 
         val result =
             policy.decide(
@@ -32,8 +32,8 @@ class LearningStepPolicyTest {
 
         assertEquals(
             LearningStepDecision.Schedule(
-                step = 0,
-                delay = Duration.ofMinutes(1),
+                step = 1,
+                delay = Duration.ofMinutes(10),
             ),
             result,
         )

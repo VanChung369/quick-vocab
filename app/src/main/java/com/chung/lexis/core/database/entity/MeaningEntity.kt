@@ -24,6 +24,19 @@ import androidx.room.PrimaryKey
                 "sortOrder",
             ],
         ),
+
+        /*
+         * Parent key cho composite FK
+         * (meaningId, lexemeId) của
+         * pronunciations / examples.
+         */
+        Index(
+            value = [
+                "id",
+                "lexemeId",
+            ],
+            unique = true,
+        ),
     ],
 )
 data class MeaningEntity(

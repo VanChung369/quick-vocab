@@ -30,7 +30,7 @@ class DefaultReviewSchedulerTest {
         )
 
     @Test
-    fun `new good schedules first learning step`() {
+    fun `new good schedules second learning step`() {
 
         val result =
             scheduler.schedule(
@@ -42,8 +42,8 @@ class DefaultReviewSchedulerTest {
         val progress = result.progress
 
         assertEquals(ReviewState.LEARNING, progress.state)
-        assertEquals(0, progress.step)
-        assertEquals(now.plus(Duration.ofMinutes(1)), progress.nextReviewAt)
+        assertEquals(1, progress.step)
+        assertEquals(now.plus(Duration.ofMinutes(10)), progress.nextReviewAt)
         assertEquals(now, progress.lastReviewedAt)
         assertEquals(1, progress.reviewCount)
         assertEquals(0, progress.scheduledDays)

@@ -4,6 +4,7 @@ import com.chung.lexis.domain.model.CorruptReviewDataException
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewLog
 import com.chung.lexis.domain.model.ReviewRating
+import com.chung.lexis.domain.model.requireReviewed
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
 import com.chung.lexis.domain.scheduler.ReviewSchedule
@@ -160,6 +161,13 @@ class SubmitReviewUseCase(
         ) {
             "Scheduler must increment reviewCount exactly once"
         }
+
+        /*
+         * Check trước khi save để vi phạm
+         * thành CorruptReviewDataException (skip card),
+         * thay vì saveReview fail → SAVE_FAILED retry mãi.
+         */
+        schedule.progress.requireReviewed()
 
         return schedule
     }

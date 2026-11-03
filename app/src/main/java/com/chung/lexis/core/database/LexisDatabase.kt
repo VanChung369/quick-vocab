@@ -15,6 +15,7 @@ import com.chung.lexis.core.database.entity.LexemeUserStateEntity
 import com.chung.lexis.core.database.entity.MeaningEntity
 import com.chung.lexis.core.database.entity.PronunciationEntity
 import com.chung.lexis.core.database.entity.ReviewLogEntity
+import com.chung.lexis.core.database.entity.ReviewQuarantineEntity
 
 @Database(
     entities = [
@@ -28,8 +29,9 @@ import com.chung.lexis.core.database.entity.ReviewLogEntity
         LexemeUserStateEntity::class,
         LearningProgressEntity::class,
         ReviewLogEntity::class,
+        ReviewQuarantineEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 

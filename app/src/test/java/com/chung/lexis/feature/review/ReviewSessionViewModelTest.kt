@@ -1074,6 +1074,12 @@ class ReviewSessionViewModelTest {
         ): List<ReviewLog> =
             emptyList()
 
+        override suspend fun quarantineReviewCard(
+            lexemeId: Long,
+            reason: String,
+            detectedAt: Instant,
+        ) = Unit
+
         override suspend fun getReviewCard(
             lexemeId: Long,
         ): ReviewCard? {
@@ -1135,6 +1141,8 @@ class ReviewSessionViewModelTest {
                             current.copy(
                                 state = ReviewState.LEARNING,
                                 step = 0,
+                                stability = 2.5,
+                                difficulty = 5.0,
                                 reviewCount = current.reviewCount + 1,
                                 scheduledDays = 0,
                                 lastReviewedAt = reviewedAt,
@@ -1155,6 +1163,8 @@ class ReviewSessionViewModelTest {
                             current.copy(
                                 state = ReviewState.REVIEW,
                                 step = null,
+                                stability = 2.5,
+                                difficulty = 5.0,
                                 reviewCount = current.reviewCount + 1,
                                 scheduledDays = 1,
                                 lastReviewedAt = reviewedAt,

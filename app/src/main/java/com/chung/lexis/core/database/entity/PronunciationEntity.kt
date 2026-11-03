@@ -22,11 +22,25 @@ import androidx.room.PrimaryKey
             childColumns = ["meaningId"],
             onDelete = ForeignKey.SET_NULL,
         ),
+
+        /*
+         * meaningId phải là meaning của chính lexemeId.
+         *
+         * NO_ACTION check ở cuối statement:
+         * xoá meaning → FK phía trên SET NULL meaningId
+         * trước → composite key có NULL, không vi phạm.
+         */
+        ForeignKey(
+            entity = MeaningEntity::class,
+            parentColumns = ["id", "lexemeId"],
+            childColumns = ["meaningId", "lexemeId"],
+            onDelete = ForeignKey.NO_ACTION,
+        ),
     ],
 
     indices = [
         Index(value = ["lexemeId"]),
-        Index(value = ["meaningId"]),
+        Index(value = ["meaningId", "lexemeId"]),
     ],
 )
 data class PronunciationEntity(

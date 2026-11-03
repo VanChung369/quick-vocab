@@ -65,6 +65,10 @@ class LearningStepPolicy(
         )
 
         /*
+         * Chưa có step (NEW, hoặc vừa REVIEW → RELEARNING)
+         * → coi như đang ở step 0, giống py-fsrs:
+         * GOOD lần đầu sang step 1 thay vì lặp step 0.
+         *
          * Step đã lưu có thể nằm ngoài cấu hình hiện tại
          * (vd. rút ngắn learning steps khi card đang ở step cũ).
          *
@@ -72,7 +76,7 @@ class LearningStepPolicy(
          * GOOD → Graduate, HARD → lặp step cuối.
          */
         val step =
-            currentStep?.coerceAtMost(
+            (currentStep ?: 0).coerceAtMost(
                 steps.lastIndex
             )
 
@@ -85,8 +89,8 @@ class LearningStepPolicy(
                 )
 
             ReviewRating.HARD ->
-                schedule(
-                    step = step ?: 0,
+                hard(
+                    step = step,
                     steps = steps,
                 )
 
@@ -101,17 +105,50 @@ class LearningStepPolicy(
         }
     }
 
+    /*
+     * HARD giữ nguyên step.
+     *
+     * Ở step 0, delay nằm giữa AGAIN và GOOD
+     * thay vì trùng AGAIN (giống py-fsrs):
+     * - 1 step: 1.5 × step 0
+     * - ≥ 2 step: trung bình step 0 và step 1
+     */
+    private fun hard(
+        step: Int,
+        steps: List<Duration>,
+    ): LearningStepDecision.Schedule {
+
+        if (step != 0) {
+            return schedule(
+                step = step,
+                steps = steps,
+            )
+        }
+
+        val delay =
+            if (steps.size == 1) {
+                steps[0]
+                    .multipliedBy(3)
+                    .dividedBy(2)
+            } else {
+                steps[0]
+                    .plus(steps[1])
+                    .dividedBy(2)
+            }
+
+        return LearningStepDecision.Schedule(
+            step = 0,
+            delay = delay,
+        )
+    }
+
     private fun good(
-        currentStep: Int?,
+        currentStep: Int,
         steps: List<Duration>,
     ): LearningStepDecision {
 
         val nextStep =
-            if (currentStep == null) {
-                0
-            } else {
-                currentStep + 1
-            }
+            currentStep + 1
 
         return if (nextStep >= steps.size) {
 
