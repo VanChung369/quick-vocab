@@ -98,11 +98,109 @@ class SubmitReviewUseCaseTest {
             )
         }
 
+    @Test
+    fun previewIntervalsReturnsDelayOfEachRating() {
+
+        val useCase =
+            SubmitReviewUseCase(
+                reviewRepository =
+                    RecordingReviewRepository(),
+                reviewScheduler =
+                    FakeScheduler(
+                        stability = 2.3,
+                        delayOf = RATING_DELAYS::getValue,
+                    ),
+            )
+
+        val intervals =
+            useCase.previewIntervals(
+                progress =
+                    LearningProgress(lexemeId = 1L),
+                reviewedAt = now,
+            )
+
+        assertEquals(
+            RATING_DELAYS,
+            intervals,
+        )
+    }
+
+    @Test
+    fun previewIntervalsMeasuresFromLastReviewWhenClockWentBack() {
+
+        val useCase =
+            SubmitReviewUseCase(
+                reviewRepository =
+                    RecordingReviewRepository(),
+                reviewScheduler =
+                    FakeScheduler(
+                        stability = 2.3,
+                        delayOf = RATING_DELAYS::getValue,
+                    ),
+            )
+
+        /*
+         * Clock máy bị lùi 1h so với lần review trước:
+         * giống invoke, kẹp reviewedAt về lastReviewedAt.
+         */
+        val intervals =
+            useCase.previewIntervals(
+                progress =
+                    LearningProgress(
+                        lexemeId = 1L,
+                        state = ReviewState.LEARNING,
+                        step = 0,
+                        stability = 2.3,
+                        difficulty = 5.0,
+                        reviewCount = 1,
+                        lastReviewedAt = now,
+                        nextReviewAt =
+                            now.plus(Duration.ofMinutes(1)),
+                    ),
+                reviewedAt =
+                    now.minus(Duration.ofHours(1)),
+            )
+
+        assertEquals(
+            RATING_DELAYS,
+            intervals,
+        )
+    }
+
+    @Test
+    fun previewIntervalsOfRejectedProgressIsCorrupt() {
+
+        val useCase =
+            SubmitReviewUseCase(
+                reviewRepository =
+                    RecordingReviewRepository(),
+                reviewScheduler =
+                    FakeScheduler(stability = null),
+            )
+
+        val error =
+            runCatching {
+                useCase.previewIntervals(
+                    progress =
+                        LearningProgress(lexemeId = 1L),
+                    reviewedAt = now,
+                )
+            }.exceptionOrNull()
+
+        assertTrue(
+            "Expected CorruptReviewDataException but was $error",
+            error is CorruptReviewDataException
+        )
+    }
+
     /*
-     * NEW → LEARNING step 1, +10m.
+     * NEW → LEARNING step 1, +delayOf(rating)
+     * (mặc định 10m).
      */
     private class FakeScheduler(
         private val stability: Double?,
+        private val delayOf: (ReviewRating) -> Duration =
+            { Duration.ofMinutes(10) },
     ) : ReviewScheduler {
 
         override fun schedule(
@@ -122,7 +220,7 @@ class SubmitReviewUseCaseTest {
                         lastReviewedAt = reviewedAt,
                         nextReviewAt =
                             reviewedAt.plus(
-                                Duration.ofMinutes(10)
+                                delayOf(rating)
                             ),
                     ),
                 elapsedDays = 0,
@@ -208,5 +306,16 @@ class SubmitReviewUseCaseTest {
             detectedAt: Instant,
         ) =
             error("Not used")
+    }
+
+    private companion object {
+
+        val RATING_DELAYS =
+            mapOf(
+                ReviewRating.AGAIN to Duration.ofMinutes(1),
+                ReviewRating.HARD to Duration.ofMinutes(6),
+                ReviewRating.GOOD to Duration.ofMinutes(10),
+                ReviewRating.EASY to Duration.ofDays(4),
+            )
     }
 }

@@ -1,6 +1,7 @@
 package com.chung.lexis.feature.review
 
 import com.chung.lexis.core.log.AppLogger
+import com.chung.lexis.domain.model.CorruptReviewDataException
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.Lexeme
 import com.chung.lexis.domain.model.ReviewCard
@@ -30,6 +31,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -46,6 +48,8 @@ class ReviewSessionViewModelTest {
         Instant.parse("2026-10-21T12:00:00Z")
 
     private lateinit var fakeRepository: FakeReviewRepository
+
+    private lateinit var fakeLogger: RecordingLogger
 
     private val testDispatcher =
         StandardTestDispatcher()
@@ -404,6 +408,398 @@ class ReviewSessionViewModelTest {
                     Duration.ofSeconds(30)
                 ),
                 clock.instant(),
+            )
+        }
+
+    @Test
+    fun dailyNewLimitSubtractsNewCardsStartedToday() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue = emptyList(),
+                    cards = emptyMap(),
+                    failCardIds = emptySet(),
+                )
+
+            fakeRepository.newCardsStartedToday = 7
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                3,
+                fakeRepository.lastNewLimit,
+            )
+
+            /*
+             * "Hôm nay" theo zone của clock (UTC trong test).
+             */
+            assertEquals(
+                Instant.parse("2026-10-21T00:00:00Z"),
+                fakeRepository.lastStartedSince,
+            )
+        }
+
+    @Test
+    fun dailyNewLimitIsNeverNegative() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue = emptyList(),
+                    cards = emptyMap(),
+                    failCardIds = emptySet(),
+                )
+
+            fakeRepository.newCardsStartedToday = 15
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                0,
+                fakeRepository.lastNewLimit,
+            )
+        }
+
+    @Test
+    fun activeCardCarriesIntervalOfEveryRating() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue = listOf(progress(A)),
+                    cards = mapOf(A to card(A)),
+                    failCardIds = emptySet(),
+                )
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            val state =
+                viewModel.uiState.value
+                        as ReviewSessionUiState.Active
+
+            /*
+             * FakeReviewScheduler: NEW → +1m với mọi rating.
+             */
+            assertEquals(
+                ReviewRating.entries.associateWith {
+                    Duration.ofMinutes(1)
+                },
+                state.ratingIntervals,
+            )
+        }
+
+    @Test
+    fun cardRejectedBySchedulerIsSkippedQuarantinedAndLogged() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                        ),
+                    cards =
+                        listOf(A, B)
+                            .associateWith { card(it) },
+                    failCardIds =
+                        emptySet(),
+                    corruptLexemeIds =
+                        setOf(A),
+                )
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            /*
+             * Phát hiện lúc tính khoảng ôn,
+             * trước khi user trả lời A.
+             */
+            assertActiveCard(B, viewModel)
+
+            assertEquals(
+                listOf(A),
+                fakeRepository.quarantinedIds,
+            )
+
+            assertTrue(
+                fakeLogger.errors.any { (message, cause) ->
+                    message.startsWith("Skip lexeme $A") &&
+                            cause is CorruptReviewDataException
+                }
+            )
+        }
+
+    @Test
+    fun completedSessionReportsRatingStatsAndDuration() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                        ),
+                    cards =
+                        listOf(A, B)
+                            .associateWith { card(it) },
+                    failCardIds =
+                        emptySet(),
+                )
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            rate(viewModel, ReviewRating.AGAIN)
+
+            rate(viewModel, ReviewRating.HARD)
+
+            /*
+             * Chờ step 1m của A và B.
+             */
+            advanceUntilIdle()
+
+            assertActiveCard(A, viewModel)
+
+            rate(viewModel, ReviewRating.GOOD)
+
+            assertActiveCard(B, viewModel)
+
+            rate(viewModel, ReviewRating.EASY)
+
+            assertEquals(
+                ReviewSessionUiState.Completed(
+                    stats =
+                        ReviewSessionStats(
+                            againCount = 1,
+                            hardCount = 1,
+                            goodCount = 1,
+                            easyCount = 1,
+                            difficultLexemeIds = listOf(A, B),
+                        ),
+                    duration =
+                        Duration.ofMinutes(1),
+                ),
+                viewModel.uiState.value,
+            )
+        }
+
+    @Test
+    fun undoRestoresPreviousCardAnswerSideAndSession() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                        ),
+                    cards =
+                        listOf(A, B)
+                            .associateWith { card(it) },
+                    failCardIds =
+                        emptySet(),
+                )
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            rate(viewModel, ReviewRating.AGAIN)
+
+            val afterRating =
+                viewModel.uiState.value
+                        as ReviewSessionUiState.Active
+
+            assertEquals(B, afterRating.card.lexeme.id)
+
+            assertTrue(afterRating.canUndo)
+
+            assertEquals(1, afterRating.reviewedCount)
+
+            viewModel.undoLastRating()
+
+            runCurrent()
+
+            val undone =
+                viewModel.uiState.value
+                        as ReviewSessionUiState.Active
+
+            assertEquals(A, undone.card.lexeme.id)
+
+            /*
+             * Mặt sau: chỉ cần chọn lại rating.
+             */
+            assertTrue(undone.isAnswerRevealed)
+
+            assertFalse(undone.canUndo)
+
+            assertEquals(0, undone.reviewedCount)
+
+            /*
+             * Progress về NEW như trước rating.
+             */
+            assertEquals(
+                progress(A),
+                undone.card.progress,
+            )
+
+            viewModel.submitRating(
+                ReviewRating.GOOD
+            )
+
+            runCurrent()
+
+            /*
+             * Queue về như trước rating:
+             * B vẫn là card kế tiếp.
+             */
+            assertActiveCard(B, viewModel)
+
+            assertEquals(
+                1,
+                (viewModel.uiState.value
+                        as ReviewSessionUiState.Active)
+                    .reviewedCount,
+            )
+        }
+
+    @Test
+    fun staleUndoReportsErrorAndDisablesUndo() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                        ),
+                    cards =
+                        listOf(A, B)
+                            .associateWith { card(it) },
+                    failCardIds =
+                        emptySet(),
+                )
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            rateGood(viewModel)
+
+            fakeRepository.nextUndoReviewResult =
+                UndoReviewResult.StaleProgress(
+                    current = progress(A),
+                )
+
+            viewModel.undoLastRating()
+
+            runCurrent()
+
+            val state =
+                viewModel.uiState.value
+                        as ReviewSessionUiState.Active
+
+            assertEquals(B, state.card.lexeme.id)
+
+            assertEquals(
+                ReviewSessionError.UNDO_FAILED,
+                state.error,
+            )
+
+            assertFalse(state.canUndo)
+
+            viewModel.undoLastRating()
+
+            runCurrent()
+
+            assertEquals(
+                1,
+                fakeRepository.undoReviewCallCount,
+            )
+        }
+
+    @Test
+    fun deckSessionKeepsDeckOnRetryAndStartAnotherSession() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue = emptyList(),
+                    cards = emptyMap(),
+                    failCardIds = emptySet(),
+                    queueFailuresRemaining = 1,
+                )
+
+            viewModel.startSession(
+                deckId = DECK,
+            )
+
+            advanceUntilIdle()
+
+            assertTrue(
+                viewModel.uiState.value is
+                        ReviewSessionUiState.Failed
+            )
+
+            viewModel.retry()
+
+            advanceUntilIdle()
+
+            assertCompleted(
+                expectedReviewedCount = 0,
+                viewModel = viewModel,
+            )
+
+            viewModel.startAnotherSession()
+
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf<Long?>(DECK, DECK, DECK),
+                fakeRepository.requestedDeckIds,
+            )
+        }
+
+    @Test
+    fun sessionStartFailureLogsCause() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue = emptyList(),
+                    cards = emptyMap(),
+                    failCardIds = emptySet(),
+                    queueFailuresRemaining = 1,
+                )
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            val (message, cause) =
+                fakeLogger.errors.single()
+
+            assertEquals(
+                "Cannot start review session",
+                message,
+            )
+
+            assertEquals(
+                "Cannot load initial review queue",
+                cause?.message,
             )
         }
 
@@ -922,10 +1318,21 @@ class ReviewSessionViewModelTest {
         viewModel: ReviewSessionViewModel,
     ) {
 
+        rate(
+            viewModel = viewModel,
+            rating = ReviewRating.GOOD,
+        )
+    }
+
+    private fun TestScope.rate(
+        viewModel: ReviewSessionViewModel,
+        rating: ReviewRating,
+    ) {
+
         viewModel.revealAnswer()
 
         viewModel.submitRating(
-            ReviewRating.GOOD
+            rating
         )
 
         /*
@@ -981,7 +1388,12 @@ class ReviewSessionViewModelTest {
         cardFailuresRemaining:
         Map<Long, Int> =
             emptyMap(),
+        corruptLexemeIds: Set<Long> =
+            emptySet(),
     ): ReviewSessionViewModel {
+
+        fakeLogger =
+            RecordingLogger()
 
         fakeRepository =
             FakeReviewRepository(
@@ -1005,27 +1417,35 @@ class ReviewSessionViewModelTest {
                         fakeRepository,
 
                     reviewScheduler =
-                        FakeReviewScheduler(),
+                        FakeReviewScheduler(
+                            corruptLexemeIds =
+                                corruptLexemeIds,
+                        ),
                 ),
 
             launchPolicy =
                 launchPolicy,
 
             logger =
-                NoOpLogger,
+                fakeLogger,
 
             clock =
                 clock,
         )
     }
 
-    private object NoOpLogger : AppLogger {
+    private class RecordingLogger : AppLogger {
+
+        val errors =
+            mutableListOf<Pair<String, Throwable?>>()
 
         override fun error(
             tag: String,
             message: String,
             throwable: Throwable?,
-        ) = Unit
+        ) {
+            errors += message to throwable
+        }
     }
 
     private fun progress(
@@ -1099,6 +1519,26 @@ class ReviewSessionViewModelTest {
         var nextSaveReviewResult:
                 SaveReviewResult? = null
 
+        var nextUndoReviewResult:
+                UndoReviewResult? = null
+
+        var undoReviewCallCount = 0
+            private set
+
+        val requestedDeckIds =
+            mutableListOf<Long?>()
+
+        val quarantinedIds =
+            mutableListOf<Long>()
+
+        var newCardsStartedToday = 0
+
+        var lastStartedSince: Instant? =
+            null
+            private set
+
+        private var nextReviewLogId = 1L
+
         fun replaceQueue(
             queue: List<LearningProgress>,
         ) {
@@ -1142,6 +1582,8 @@ class ReviewSessionViewModelTest {
         ): List<LearningProgress> {
 
             getReviewQueueCallCount += 1
+
+            requestedDeckIds += deckId
 
             lastDueLimit =
                 dueLimit
@@ -1203,16 +1645,57 @@ class ReviewSessionViewModelTest {
 
             return SaveReviewResult.Saved(
                 progress = nextProgress,
-                reviewLog = reviewLog,
+                reviewLog =
+                    reviewLog.copy(
+                        id = nextReviewLogId++,
+                    ),
             )
         }
 
+        /*
+         * Compare-and-set giống Room.
+         */
         override suspend fun undoReview(
             previousProgress: LearningProgress,
             savedProgress: LearningProgress,
             reviewLog: ReviewLog,
-        ): UndoReviewResult =
-            error("Not used")
+        ): UndoReviewResult {
+
+            undoReviewCallCount += 1
+
+            val overriddenResult =
+                nextUndoReviewResult
+
+            if (overriddenResult != null) {
+
+                nextUndoReviewResult =
+                    null
+
+                return overriddenResult
+            }
+
+            val lexemeId =
+                reviewLog.lexemeId
+
+            val current =
+                progressById[lexemeId]
+                    ?: LearningProgress(
+                        lexemeId = lexemeId,
+                    )
+
+            if (current != savedProgress) {
+                return UndoReviewResult.StaleProgress(
+                    current = current,
+                )
+            }
+
+            progressById[lexemeId] =
+                previousProgress
+
+            return UndoReviewResult.Undone(
+                progress = previousProgress,
+            )
+        }
 
         override suspend fun getReviewHistory(
             lexemeId: Long,
@@ -1221,14 +1704,21 @@ class ReviewSessionViewModelTest {
 
         override suspend fun countNewCardsStartedSince(
             since: Instant,
-        ): Int =
-            0
+        ): Int {
+
+            lastStartedSince =
+                since
+
+            return newCardsStartedToday
+        }
 
         override suspend fun quarantineReviewCard(
             lexemeId: Long,
             reason: String,
             detectedAt: Instant,
-        ) = Unit
+        ) {
+            quarantinedIds += lexemeId
+        }
 
         override suspend fun getReviewCard(
             lexemeId: Long,
@@ -1275,15 +1765,26 @@ class ReviewSessionViewModelTest {
     /*
      * NEW      → LEARNING step 0, +1m
      * LEARNING → REVIEW, +1d
+     *
+     * corruptLexemeIds: scheduler từ chối progress,
+     * giống memory state hỏng.
      */
-    private class FakeReviewScheduler : ReviewScheduler {
+    private class FakeReviewScheduler(
+        private val corruptLexemeIds: Set<Long> =
+            emptySet(),
+    ) : ReviewScheduler {
 
         override fun schedule(
             current: LearningProgress,
             rating: ReviewRating,
             reviewedAt: Instant,
-        ): ReviewSchedule =
-            when (current.state) {
+        ): ReviewSchedule {
+
+            require(current.lexemeId !in corruptLexemeIds) {
+                "Corrupt memory state of ${current.lexemeId}"
+            }
+
+            return when (current.state) {
 
                 ReviewState.NEW ->
                     ReviewSchedule(
@@ -1327,6 +1828,7 @@ class ReviewSessionViewModelTest {
                         scheduledDays = 1,
                     )
             }
+        }
     }
 
     private class SchedulerClock(
@@ -1353,5 +1855,7 @@ class ReviewSessionViewModelTest {
         private const val B = 2L
         private const val C = 3L
         private const val D = 4L
+
+        private const val DECK = 30L
     }
 }

@@ -468,6 +468,138 @@ class RoomReviewQueueTest {
         }
 
     @Test
+    fun deckFilterLimitsQueueSummaryAndUpcomingToDeck() =
+        runBlocking {
+
+            val deck1 =
+                insertDeck("English")
+
+            val deck2 =
+                insertDeck("IELTS")
+
+            val new1 =
+                insertLexeme("new-one")
+
+            val new2 =
+                insertLexeme("new-two")
+
+            /*
+             * Một lexeme ở cả hai deck.
+             */
+            val shared =
+                insertLexeme("shared")
+
+            val due2 =
+                insertLexeme("due-two")
+
+            val upcoming1 =
+                insertLexeme("upcoming-one")
+
+            val upcoming2 =
+                insertLexeme("upcoming-two")
+
+            addToDeck(deckId = deck1, lexemeId = new1)
+            addToDeck(deckId = deck2, lexemeId = new2)
+            addToDeck(deckId = deck1, lexemeId = shared)
+            addToDeck(deckId = deck2, lexemeId = shared)
+            addToDeck(deckId = deck2, lexemeId = due2)
+            addToDeck(deckId = deck1, lexemeId = upcoming1)
+            addToDeck(deckId = deck2, lexemeId = upcoming2)
+
+            insertProgress(
+                lexemeId = shared,
+                state = ReviewStateColumn.REVIEW,
+                dueAt = now.minus(Duration.ofHours(2)),
+            )
+
+            insertProgress(
+                lexemeId = due2,
+                state = ReviewStateColumn.REVIEW,
+                dueAt = now.minus(Duration.ofHours(1)),
+            )
+
+            insertProgress(
+                lexemeId = upcoming1,
+                state = ReviewStateColumn.LEARNING,
+                dueAt = now.plus(Duration.ofMinutes(5)),
+            )
+
+            insertProgress(
+                lexemeId = upcoming2,
+                state = ReviewStateColumn.LEARNING,
+                dueAt = now.plus(Duration.ofMinutes(5)),
+            )
+
+            fun queueOf(deckId: Long?): List<Long> =
+                runBlocking {
+                    repository
+                        .getReviewQueue(
+                            now = now,
+                            dueLimit = 10,
+                            newLimit = 10,
+                            deckId = deckId,
+                        )
+                        .map { it.lexemeId }
+                }
+
+            assertEquals(
+                listOf(shared, new1),
+                queueOf(deck1),
+            )
+
+            assertEquals(
+                listOf(shared, due2, new2),
+                queueOf(deck2),
+            )
+
+            /*
+             * null = mọi deck, như trước.
+             */
+            assertEquals(
+                listOf(shared, due2, new1, new2),
+                queueOf(null),
+            )
+
+            val summary1 =
+                repository.getReviewDueSummary(
+                    now = now,
+                    deckId = deck1,
+                )
+
+            assertEquals(1, summary1.reviewDue)
+            assertEquals(1, summary1.newAvailable)
+
+            val summary2 =
+                repository.getReviewDueSummary(
+                    now = now,
+                    deckId = deck2,
+                )
+
+            assertEquals(2, summary2.reviewDue)
+            assertEquals(1, summary2.newAvailable)
+
+            assertEquals(
+                listOf(upcoming1),
+                repository
+                    .getUpcomingShortTerm(
+                        now = now,
+                        deckId = deck1,
+                    )
+                    .map { it.lexemeId },
+            )
+
+            assertEquals(
+                listOf(upcoming2),
+                repository
+                    .getUpcomingShortTerm(
+                        now = now,
+                        deckId = deck2,
+                    )
+                    .map { it.lexemeId },
+            )
+        }
+
+    @Test
     fun quarantinedLexemeIsExcludedFromQueueAndSummary() =
         runBlocking {
 
