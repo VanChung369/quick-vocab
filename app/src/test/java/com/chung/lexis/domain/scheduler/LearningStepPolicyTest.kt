@@ -112,6 +112,63 @@ class LearningStepPolicyTest {
     }
 
     @Test
+    fun `new again schedules first learning step`() {
+
+        val result =
+            policy.decide(
+                phase = ReviewState.NEW,
+                currentStep = null,
+                rating = ReviewRating.AGAIN,
+            )
+
+        assertEquals(
+            LearningStepDecision.Schedule(
+                step = 0,
+                delay = Duration.ofMinutes(1),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun `new hard waits midway between first two learning steps`() {
+
+        val result =
+            policy.decide(
+                phase = ReviewState.NEW,
+                currentStep = null,
+                rating = ReviewRating.HARD,
+            )
+
+        assertEquals(
+            LearningStepDecision.Schedule(
+                step = 0,
+                delay = Duration.ofSeconds(330),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun `hard on single relearning step waits one and a half step`() {
+
+        val result =
+            policy.decide(
+                phase = ReviewState.RELEARNING,
+                currentStep = 0,
+                rating = ReviewRating.HARD,
+            )
+
+        assertEquals(
+            LearningStepDecision.Schedule(
+                step = 0,
+                delay = Duration.ofMinutes(15),
+            ),
+            result,
+        )
+    }
+
+    @Test
     fun `easy graduates immediately`() {
 
         val result =

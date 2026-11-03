@@ -468,6 +468,86 @@ class RoomReviewQueueTest {
         }
 
     @Test
+    fun quarantinedLexemeIsExcludedFromQueueAndSummary() =
+        runBlocking {
+
+            val deckId =
+                insertDeck("English")
+
+            val dueId =
+                insertLexeme("due")
+
+            val newId =
+                insertLexeme("new")
+
+            val keptId =
+                insertLexeme("kept")
+
+            listOf(dueId, newId, keptId).forEach { lexemeId ->
+                addToDeck(
+                    deckId = deckId,
+                    lexemeId = lexemeId,
+                )
+            }
+
+            insertProgress(
+                lexemeId = dueId,
+                state =
+                    ReviewStateColumn.REVIEW,
+                dueAt =
+                    now.minus(
+                        Duration.ofHours(1)
+                    ),
+            )
+
+            repository.quarantineReviewCard(
+                lexemeId = dueId,
+                reason = "test",
+                detectedAt = now,
+            )
+
+            repository.quarantineReviewCard(
+                lexemeId = newId,
+                reason = "test",
+                detectedAt = now,
+            )
+
+            /*
+             * Cách ly lại cùng lexeme không lỗi.
+             */
+            repository.quarantineReviewCard(
+                lexemeId = dueId,
+                reason = "test again",
+                detectedAt = now,
+            )
+
+            val queue =
+                repository.getReviewQueue(
+                    now = now,
+                    dueLimit = 10,
+                    newLimit = 10,
+                )
+
+            assertEquals(
+                listOf(keptId),
+                queue.map { it.lexemeId },
+            )
+
+            val summary =
+                repository.getReviewDueSummary(now)
+
+            assertEquals(
+                0,
+                summary.dueCount,
+            )
+
+            assertEquals(
+                1,
+                summary.newAvailable,
+            )
+        }
+
+    @Test
     fun dueLimitAndNewLimitAreIndependent() =
         runBlocking {
 

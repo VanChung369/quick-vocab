@@ -53,6 +53,28 @@ class DefaultReviewSchedulerTest {
     }
 
     @Test
+    fun `new card graduates after two goods`() {
+
+        val first =
+            scheduler.schedule(
+                current = LearningProgress(lexemeId = 1L),
+                rating = ReviewRating.GOOD,
+                reviewedAt = now,
+            )
+
+        val second =
+            scheduler.schedule(
+                current = first.progress,
+                rating = ReviewRating.GOOD,
+                reviewedAt = now.plus(Duration.ofMinutes(10)),
+            )
+
+        assertEquals(ReviewState.REVIEW, second.progress.state)
+        assertNull(second.progress.step)
+        assertEquals(2, second.progress.reviewCount)
+    }
+
+    @Test
     fun `learning again resets to first step`() {
 
         val result =

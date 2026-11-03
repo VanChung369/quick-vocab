@@ -296,6 +296,118 @@ class ReviewSessionViewModelTest {
         }
 
     @Test
+    fun learnAheadShowsShortTermRepeatInsteadOfWaiting() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                        ),
+                    cards =
+                        listOf(A, B)
+                            .associateWith { card(it) },
+                    failCardIds =
+                        emptySet(),
+                    launchPolicy =
+                        ReviewSessionLaunchPolicy(
+                            dueLimit = 10,
+                            newLimit = 10,
+                            learnAheadLimit =
+                                Duration.ofMinutes(20),
+                        ),
+                )
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            rateGood(viewModel)
+
+            rateGood(viewModel)
+
+            /*
+             * A/B còn step 1m, nằm trong learn-ahead 20m
+             * → học luôn A, không Waiting.
+             */
+            assertActiveCard(A, viewModel)
+
+            assertEquals(
+                now,
+                clock.instant(),
+            )
+        }
+
+    @Test
+    fun waitingEndsWhenRepeatEntersLearnAheadWindow() =
+        runTest {
+
+            val viewModel =
+                createViewModel(
+                    queue =
+                        listOf(
+                            progress(A),
+                            progress(B),
+                        ),
+                    cards =
+                        listOf(A, B)
+                            .associateWith { card(it) },
+                    failCardIds =
+                        emptySet(),
+                    launchPolicy =
+                        ReviewSessionLaunchPolicy(
+                            dueLimit = 10,
+                            newLimit = 10,
+                            learnAheadLimit =
+                                Duration.ofSeconds(30),
+                        ),
+                )
+
+            viewModel.startSession()
+
+            advanceUntilIdle()
+
+            rateGood(viewModel)
+
+            rateGood(viewModel)
+
+            /*
+             * A/B due sau 1m, learn-ahead 30s
+             * → chờ tới lúc A vào window (+30s).
+             */
+            assertEquals(
+                ReviewSessionUiState.Waiting(
+                    nextDueAt =
+                        now.plus(
+                            Duration.ofSeconds(30)
+                        ),
+                    reviewedCount = 2,
+                    remainingCount = 2,
+                ),
+                viewModel.uiState.value,
+            )
+
+            advanceTimeBy(
+                Duration
+                    .ofSeconds(30)
+                    .toMillis()
+            )
+
+            runCurrent()
+
+            assertActiveCard(A, viewModel)
+
+            assertEquals(
+                now.plus(
+                    Duration.ofSeconds(30)
+                ),
+                clock.instant(),
+            )
+        }
+
+    @Test
     fun retryAfterInitialLoadFailureRequeriesGlobalQueue() =
         runTest {
 
