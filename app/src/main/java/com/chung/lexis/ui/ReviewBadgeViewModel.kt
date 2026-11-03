@@ -3,6 +3,7 @@ package com.chung.lexis.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.chung.lexis.core.log.AppLogger
 import com.chung.lexis.domain.repository.ReviewRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -20,6 +21,8 @@ data class ReviewBadgeUiState(
 
 class ReviewBadgeViewModel(
     reviewRepository: ReviewRepository,
+
+    logger: AppLogger,
 
     clock: Clock = Clock.systemUTC(),
 ) : ViewModel() {
@@ -52,6 +55,13 @@ class ReviewBadgeViewModel(
                 ) {
                     return@retryWhen false
                 }
+
+                logger.error(
+                    TAG,
+                    "Cannot load review due summary, " +
+                            "retry #${attempt + 1}",
+                    cause,
+                )
 
                 val retryDelayMillis =
                     (
@@ -91,6 +101,9 @@ class ReviewBadgeViewModel(
     class Factory(
         private val reviewRepository:
         ReviewRepository,
+
+        private val logger:
+        AppLogger,
     ) : ViewModelProvider.Factory {
 
         @Suppress(
@@ -115,7 +128,14 @@ class ReviewBadgeViewModel(
             return ReviewBadgeViewModel(
                 reviewRepository =
                     reviewRepository,
+
+                logger =
+                    logger,
             ) as T
         }
+    }
+
+    private companion object {
+        const val TAG = "ReviewBadge"
     }
 }

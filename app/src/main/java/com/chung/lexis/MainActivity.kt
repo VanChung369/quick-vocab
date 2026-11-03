@@ -24,6 +24,11 @@ class MainActivity :
                     application
                         .appContainer
                         .reviewRepository,
+
+                logger =
+                    application
+                        .appContainer
+                        .logger,
             )
 
         ViewModelProvider(
@@ -51,6 +56,9 @@ class MainActivity :
 
                 launchPolicy =
                     container.reviewSessionLaunchPolicy,
+
+                logger =
+                    container.logger,
             )
 
         ViewModelProvider(

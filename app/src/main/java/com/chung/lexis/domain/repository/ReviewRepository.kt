@@ -13,26 +13,35 @@ interface ReviewRepository {
         lexemeId: Long,
     ): LearningProgress?
 
+    /*
+     * deckId ở các hàm queue / summary:
+     * null = mọi deck, khác null = chỉ card thuộc deck đó.
+     */
+
     suspend fun getReviewQueue(
         now: Instant,
         dueLimit: Int,
         newLimit: Int,
+        deckId: Long? = null,
     ): List<LearningProgress>
 
     /**
      * LEARNING / RELEARNING chưa tới hạn tại [now]
-     * (chỉ card thuộc ít nhất một deck).
+     * (chỉ card thuộc ít nhất một deck, hoặc [deckId]).
      */
     suspend fun getUpcomingShortTerm(
         now: Instant,
+        deckId: Long? = null,
     ): List<LearningProgress>
 
     suspend fun getReviewDueSummary(
         now: Instant,
+        deckId: Long? = null,
     ): ReviewDueSummary
 
     fun observeReviewDueSummary(
         clock: Clock,
+        deckId: Long? = null,
     ): Flow<ReviewDueSummary>
 
     suspend fun saveReview(
@@ -40,6 +49,19 @@ interface ReviewRepository {
         nextProgress: LearningProgress,
         reviewLog: ReviewLog,
     ): SaveReviewResult
+
+    /**
+     * Hoàn tác một review đã [saveReview]: progress về
+     * [previousProgress], xoá [reviewLog].
+     *
+     * Compare-and-set như saveReview: progress hiện tại
+     * phải đúng [savedProgress], nếu không → StaleProgress.
+     */
+    suspend fun undoReview(
+        previousProgress: LearningProgress,
+        savedProgress: LearningProgress,
+        reviewLog: ReviewLog,
+    ): UndoReviewResult
 
     suspend fun getReviewHistory(
         lexemeId: Long,
@@ -85,4 +107,23 @@ sealed interface SaveReviewResult {
     ) : SaveReviewResult
 
     data object LexemeNotFound : SaveReviewResult
+}
+
+sealed interface UndoReviewResult {
+
+    data class Undone(
+        val progress: LearningProgress,
+    ) : UndoReviewResult
+
+    /*
+     * Có write khác sau review cần hoàn tác.
+     */
+    data class StaleProgress(
+        val current: LearningProgress,
+    ) : UndoReviewResult
+
+    /*
+     * Lexeme hoặc review log không còn.
+     */
+    data object ReviewNotFound : UndoReviewResult
 }

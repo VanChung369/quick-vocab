@@ -1,5 +1,6 @@
 package com.chung.lexis.feature.review
 
+import com.chung.lexis.core.log.AppLogger
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.Lexeme
 import com.chung.lexis.domain.model.ReviewCard
@@ -10,6 +11,7 @@ import com.chung.lexis.domain.model.ReviewSessionLaunchPolicy
 import com.chung.lexis.domain.model.ReviewState
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
+import com.chung.lexis.domain.repository.UndoReviewResult
 import com.chung.lexis.domain.scheduler.ReviewSchedule
 import com.chung.lexis.domain.scheduler.ReviewScheduler
 import com.chung.lexis.domain.usecase.SubmitReviewUseCase
@@ -272,11 +274,9 @@ class ReviewSessionViewModelTest {
 
             rateGood(viewModel)
 
-            assertEquals(
-                ReviewSessionUiState.Completed(
-                    reviewedCount = 4,
-                ),
-                viewModel.uiState.value,
+            assertCompleted(
+                expectedReviewedCount = 4,
+                viewModel = viewModel,
             )
 
             assertEquals(
@@ -457,11 +457,9 @@ class ReviewSessionViewModelTest {
                     .getReviewQueueCallCount,
             )
 
-            assertEquals(
-                ReviewSessionUiState.Completed(
-                    reviewedCount = 0,
-                ),
-                viewModel.uiState.value,
+            assertCompleted(
+                expectedReviewedCount = 0,
+                viewModel = viewModel,
             )
         }
 
@@ -786,11 +784,9 @@ class ReviewSessionViewModelTest {
 
             runCurrent()
 
-            assertEquals(
-                ReviewSessionUiState.Completed(
-                    reviewedCount = 0,
-                ),
-                viewModel.uiState.value,
+            assertCompleted(
+                expectedReviewedCount = 0,
+                viewModel = viewModel,
             )
 
             assertEquals(
@@ -880,11 +876,9 @@ class ReviewSessionViewModelTest {
 
             advanceUntilIdle()
 
-            assertEquals(
-                ReviewSessionUiState.Completed(
-                    reviewedCount = 0,
-                ),
-                viewModel.uiState.value,
+            assertCompleted(
+                expectedReviewedCount = 0,
+                viewModel = viewModel,
             )
 
             assertEquals(
@@ -957,6 +951,22 @@ class ReviewSessionViewModelTest {
         )
     }
 
+    private fun assertCompleted(
+        expectedReviewedCount: Int,
+        viewModel: ReviewSessionViewModel,
+    ) {
+
+        val state =
+            viewModel.uiState.value
+
+        assertTrue(
+            "Expected Completed($expectedReviewedCount) but was $state",
+            state is ReviewSessionUiState.Completed &&
+                    state.reviewedCount ==
+                    expectedReviewedCount
+        )
+    }
+
     private fun createViewModel(
         queue: List<LearningProgress>,
         cards: Map<Long, ReviewCard>,
@@ -1001,9 +1011,21 @@ class ReviewSessionViewModelTest {
             launchPolicy =
                 launchPolicy,
 
+            logger =
+                NoOpLogger,
+
             clock =
                 clock,
         )
+    }
+
+    private object NoOpLogger : AppLogger {
+
+        override fun error(
+            tag: String,
+            message: String,
+            throwable: Throwable?,
+        ) = Unit
     }
 
     private fun progress(
@@ -1116,6 +1138,7 @@ class ReviewSessionViewModelTest {
             now: Instant,
             dueLimit: Int,
             newLimit: Int,
+            deckId: Long?,
         ): List<LearningProgress> {
 
             getReviewQueueCallCount += 1
@@ -1140,16 +1163,19 @@ class ReviewSessionViewModelTest {
 
         override suspend fun getUpcomingShortTerm(
             now: Instant,
+            deckId: Long?,
         ): List<LearningProgress> =
             emptyList()
 
         override suspend fun getReviewDueSummary(
             now: Instant,
+            deckId: Long?,
         ): ReviewDueSummary =
             error("Not used")
 
         override fun observeReviewDueSummary(
             clock: Clock,
+            deckId: Long?,
         ): Flow<ReviewDueSummary> =
             emptyFlow()
 
@@ -1180,6 +1206,13 @@ class ReviewSessionViewModelTest {
                 reviewLog = reviewLog,
             )
         }
+
+        override suspend fun undoReview(
+            previousProgress: LearningProgress,
+            savedProgress: LearningProgress,
+            reviewLog: ReviewLog,
+        ): UndoReviewResult =
+            error("Not used")
 
         override suspend fun getReviewHistory(
             lexemeId: Long,

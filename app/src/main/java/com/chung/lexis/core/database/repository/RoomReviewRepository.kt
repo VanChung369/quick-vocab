@@ -15,6 +15,7 @@ import com.chung.lexis.domain.model.ReviewLog
 import com.chung.lexis.domain.model.requireReviewed
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
+import com.chung.lexis.domain.repository.UndoReviewResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
@@ -134,6 +135,86 @@ class RoomReviewRepository(
             )
         }
 
+    override suspend fun undoReview(
+        previousProgress: LearningProgress,
+        savedProgress: LearningProgress,
+        reviewLog: ReviewLog,
+    ): UndoReviewResult =
+        database.withTransaction {
+
+            val lexemeId =
+                reviewLog.lexemeId
+
+            require(reviewLog.id != 0L) {
+                "Only a saved ReviewLog can be undone"
+            }
+
+            require(
+                previousProgress.lexemeId == lexemeId &&
+                        savedProgress.lexemeId == lexemeId
+            ) {
+                "Progress and ReviewLog must belong to the same lexeme"
+            }
+
+            val logEntity =
+                reviewDao.getReviewLog(
+                    reviewLog.id
+                )
+
+            if (
+                lexemeDao.getLexeme(lexemeId) == null ||
+                logEntity == null ||
+                logEntity.lexemeId != lexemeId
+            ) {
+                return@withTransaction UndoReviewResult.ReviewNotFound
+            }
+
+            val currentProgress =
+                reviewDao
+                    .getProgress(lexemeId)
+                    ?.toDomain()
+                    ?: LearningProgress(
+                        lexemeId = lexemeId,
+                    )
+
+            /*
+             * Canonicalize như saveReview.
+             */
+            if (
+                currentProgress !=
+                savedProgress
+                    .toEntity()
+                    .toDomain()
+            ) {
+                return@withTransaction UndoReviewResult.StaleProgress(
+                    current = currentProgress,
+                )
+            }
+
+            /*
+             * Logical NEW (chưa có row) được lưu thành
+             * row NEW: queue vẫn coi là từ mới.
+             */
+            reviewDao.upsertProgress(
+                previousProgress.toEntity()
+            )
+
+            reviewDao.deleteReviewLog(
+                reviewLog.id
+            )
+
+            UndoReviewResult.Undone(
+                progress =
+                    reviewDao
+                        .getProgress(lexemeId)
+                        ?.toDomain()
+                        ?: error(
+                            "LearningProgress $lexemeId " +
+                                    "was not found after undo"
+                        ),
+            )
+        }
+
     override suspend fun getReviewHistory(
         lexemeId: Long,
     ): List<ReviewLog> =
@@ -214,6 +295,7 @@ class RoomReviewRepository(
         now: Instant,
         dueLimit: Int,
         newLimit: Int,
+        deckId: Long?,
     ): List<LearningProgress> {
 
         require(dueLimit >= 0) {
@@ -245,6 +327,9 @@ class RoomReviewRepository(
 
                         limit =
                             dueLimit,
+
+                        deckId =
+                            deckId,
                     )
                 }
 
@@ -270,6 +355,9 @@ class RoomReviewRepository(
 
                         limit =
                             reviewSlots,
+
+                        deckId =
+                            deckId,
                     )
                 }
 
@@ -283,6 +371,9 @@ class RoomReviewRepository(
 
                         limit =
                             newLimit,
+
+                        deckId =
+                            deckId,
                     )
                 }
 
@@ -317,6 +408,7 @@ class RoomReviewRepository(
 
     override suspend fun getUpcomingShortTerm(
         now: Instant,
+        deckId: Long?,
     ): List<LearningProgress> =
         reviewDao
             .getUpcomingShortTerm(
@@ -328,6 +420,9 @@ class RoomReviewRepository(
 
                 relearningState =
                     ReviewStateColumn.RELEARNING,
+
+                deckId =
+                    deckId,
             )
             .map { entity ->
                 entity.toDomain()
@@ -335,6 +430,7 @@ class RoomReviewRepository(
 
     override suspend fun getReviewDueSummary(
         now: Instant,
+        deckId: Long?,
     ): ReviewDueSummary =
         database.withTransaction {
 
@@ -351,6 +447,9 @@ class RoomReviewRepository(
 
                     relearningState =
                         ReviewStateColumn.RELEARNING,
+
+                    deckId =
+                        deckId,
                 )
 
             val reviewDue =
@@ -360,12 +459,18 @@ class RoomReviewRepository(
 
                     reviewState =
                         ReviewStateColumn.REVIEW,
+
+                    deckId =
+                        deckId,
                 )
 
             val newAvailable =
                 reviewDao.countNewAvailable(
                     newState =
                         ReviewStateColumn.NEW,
+
+                    deckId =
+                        deckId,
                 )
 
             ReviewDueSummary(
@@ -385,6 +490,7 @@ class RoomReviewRepository(
     )
     override fun observeReviewDueSummary(
         clock: Clock,
+        deckId: Long?,
     ): Flow<ReviewDueSummary> =
 
         database
@@ -410,6 +516,7 @@ class RoomReviewRepository(
                         emit(
                             getReviewDueSummary(
                                 now = now,
+                                deckId = deckId,
                             )
                         )
 
@@ -431,6 +538,9 @@ class RoomReviewRepository(
 
                                     reviewState =
                                         ReviewStateColumn.REVIEW,
+
+                                    deckId =
+                                        deckId,
                                 )
 
                         /*

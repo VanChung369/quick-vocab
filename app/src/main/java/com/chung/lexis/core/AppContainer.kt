@@ -6,6 +6,8 @@ import com.chung.lexis.core.database.LexisDatabase
 import com.chung.lexis.core.database.MIGRATION_1_2
 import com.chung.lexis.core.database.repository.RoomLexemeRepository
 import com.chung.lexis.core.database.repository.RoomReviewRepository
+import com.chung.lexis.core.log.AndroidLogger
+import com.chung.lexis.core.log.AppLogger
 import com.chung.lexis.domain.model.ReviewSessionLaunchPolicy
 import com.chung.lexis.domain.repository.LexemeRepository
 import com.chung.lexis.domain.repository.ReviewRepository
@@ -26,6 +28,8 @@ interface AppContainer {
     val submitReviewUseCase: SubmitReviewUseCase
 
     val reviewSessionLaunchPolicy: ReviewSessionLaunchPolicy
+
+    val logger: AppLogger
 }
 
 class DefaultAppContainer(
@@ -104,6 +108,9 @@ class DefaultAppContainer(
             learnAheadLimit =
                 DEFAULT_LEARN_AHEAD_LIMIT,
         )
+
+    override val logger: AppLogger =
+        AndroidLogger
 
     companion object {
 

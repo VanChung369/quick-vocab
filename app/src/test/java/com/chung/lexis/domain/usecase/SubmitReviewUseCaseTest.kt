@@ -9,6 +9,7 @@ import com.chung.lexis.domain.model.ReviewRating
 import com.chung.lexis.domain.model.ReviewState
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
+import com.chung.lexis.domain.repository.UndoReviewResult
 import com.chung.lexis.domain.scheduler.ReviewSchedule
 import com.chung.lexis.domain.scheduler.ReviewScheduler
 import kotlinx.coroutines.flow.Flow
@@ -157,23 +158,34 @@ class SubmitReviewUseCaseTest {
             now: Instant,
             dueLimit: Int,
             newLimit: Int,
+            deckId: Long?,
         ): List<LearningProgress> =
             error("Not used")
 
         override suspend fun getUpcomingShortTerm(
             now: Instant,
+            deckId: Long?,
         ): List<LearningProgress> =
             error("Not used")
 
         override suspend fun getReviewDueSummary(
             now: Instant,
+            deckId: Long?,
         ): ReviewDueSummary =
             error("Not used")
 
         override fun observeReviewDueSummary(
             clock: Clock,
+            deckId: Long?,
         ): Flow<ReviewDueSummary> =
             emptyFlow()
+
+        override suspend fun undoReview(
+            previousProgress: LearningProgress,
+            savedProgress: LearningProgress,
+            reviewLog: ReviewLog,
+        ): UndoReviewResult =
+            error("Not used")
 
         override suspend fun getReviewHistory(
             lexemeId: Long,

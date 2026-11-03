@@ -1,17 +1,19 @@
 package com.chung.lexis.feature.review
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.chung.lexis.core.log.AppLogger
 import com.chung.lexis.domain.model.CorruptReviewDataException
 import com.chung.lexis.domain.model.LearningProgress
 import com.chung.lexis.domain.model.ReviewCard
+import com.chung.lexis.domain.model.ReviewLog
 import com.chung.lexis.domain.model.ReviewRating
 import com.chung.lexis.domain.model.ReviewSessionLaunchPolicy
 import com.chung.lexis.domain.model.ReviewState
 import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
+import com.chung.lexis.domain.repository.UndoReviewResult
 import com.chung.lexis.domain.usecase.SubmitReviewUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
@@ -31,11 +33,24 @@ sealed interface ReviewSessionUiState {
 
     data class Active(
         val card: ReviewCard,
+
+        /*
+         * Khoảng tới lần ôn tiếp theo nếu chọn
+         * từng rating, để hiện dưới mỗi nút.
+         */
+        val ratingIntervals: Map<ReviewRating, Duration>,
+
         val isAnswerRevealed: Boolean = false,
         val isSubmitting: Boolean = false,
         val reviewedCount: Int,
         val remainingCount: Int,
         val error: ReviewSessionError? = null,
+
+        /*
+         * Có rating trước đó trong session
+         * hoàn tác được.
+         */
+        val canUndo: Boolean = false,
     ) : ReviewSessionUiState
 
     data class Waiting(
@@ -45,8 +60,17 @@ sealed interface ReviewSessionUiState {
     ) : ReviewSessionUiState
 
     data class Completed(
-        val reviewedCount: Int,
-    ) : ReviewSessionUiState
+        val stats: ReviewSessionStats,
+
+        /*
+         * Từ lúc bắt đầu session tới lúc Completed.
+         */
+        val duration: Duration,
+    ) : ReviewSessionUiState {
+
+        val reviewedCount: Int
+            get() = stats.reviewedCount
+    }
 
     data class Failed(
         val error: ReviewSessionError,
@@ -57,6 +81,74 @@ enum class ReviewSessionError {
     LOAD_FAILED,
     SAVE_FAILED,
     STALE_PROGRESS,
+    UNDO_FAILED,
+}
+
+/*
+ * Đếm theo từng lần rating đã lưu: card học lại
+ * trong session (learning step) được đếm mỗi lần.
+ */
+data class ReviewSessionStats(
+    val againCount: Int = 0,
+    val hardCount: Int = 0,
+    val goodCount: Int = 0,
+    val easyCount: Int = 0,
+
+    /*
+     * Lexeme bị chọn AGAIN hoặc HARD ít nhất một lần,
+     * theo thứ tự lần đầu gặp khó.
+     */
+    val difficultLexemeIds: List<Long> = emptyList(),
+) {
+
+    val reviewedCount: Int
+        get() =
+            againCount +
+                    hardCount +
+                    goodCount +
+                    easyCount
+
+    val rememberedCount: Int
+        get() =
+            goodCount +
+                    easyCount
+
+    fun record(
+        lexemeId: Long,
+        rating: ReviewRating,
+    ): ReviewSessionStats {
+
+        val counted =
+            when (rating) {
+                ReviewRating.AGAIN ->
+                    copy(againCount = againCount + 1)
+
+                ReviewRating.HARD ->
+                    copy(hardCount = hardCount + 1)
+
+                ReviewRating.GOOD ->
+                    copy(goodCount = goodCount + 1)
+
+                ReviewRating.EASY ->
+                    copy(easyCount = easyCount + 1)
+            }
+
+        val isDifficult =
+            rating == ReviewRating.AGAIN ||
+                    rating == ReviewRating.HARD
+
+        return if (
+            isDifficult &&
+            lexemeId !in difficultLexemeIds
+        ) {
+            counted.copy(
+                difficultLexemeIds =
+                    difficultLexemeIds + lexemeId,
+            )
+        } else {
+            counted
+        }
+    }
 }
 
 
@@ -66,6 +158,8 @@ class ReviewSessionViewModel(
     private val submitReviewUseCase: SubmitReviewUseCase,
 
     private val launchPolicy: ReviewSessionLaunchPolicy,
+
+    private val logger: AppLogger,
 
     /*
      * Zone của clock quyết định "hôm nay"
@@ -92,6 +186,11 @@ class ReviewSessionViewModel(
         val dueAt: Instant,
     )
 
+    private data class LoadedCard(
+        val card: ReviewCard,
+        val ratingIntervals: Map<ReviewRating, Duration>,
+    )
+
     private sealed interface ReviewSessionRecovery {
 
         data object StartSession :
@@ -103,7 +202,25 @@ class ReviewSessionViewModel(
         data class ReloadCurrentCard(
             val lexemeId: Long,
         ) : ReviewSessionRecovery
+
+        data class ShowUndoneCard(
+            val lexemeId: Long,
+        ) : ReviewSessionRecovery
     }
+
+    /*
+     * Một rating đã lưu, kèm session ngay trước nó:
+     * undo trả DB về previousProgress và
+     * queue / stats về snapshot.
+     */
+    private data class UndoEntry(
+        val previousProgress: LearningProgress,
+        val savedProgress: LearningProgress,
+        val reviewLog: ReviewLog,
+        val statsBefore: ReviewSessionStats,
+        val pendingBefore: List<SessionQueueItem>,
+        val repeatsBefore: Map<Long, ScheduledRepeat>,
+    )
 
     private val _uiState =
         MutableStateFlow<ReviewSessionUiState>(
@@ -123,7 +240,20 @@ class ReviewSessionViewModel(
     private var nextSequence =
         0L
 
-    private var reviewedCount = 0
+    private var sessionStats =
+        ReviewSessionStats()
+
+    private var sessionStartedAt: Instant? =
+        null
+
+    private var sessionDeckId: Long? =
+        null
+
+    private val undoStack =
+        ArrayDeque<UndoEntry>()
+
+    private val reviewedCount: Int
+        get() = sessionStats.reviewedCount
 
     private var pendingRecovery:
             ReviewSessionRecovery? = null
@@ -186,13 +316,23 @@ class ReviewSessionViewModel(
             }
         }
 
-    fun startSession() {
+    /**
+     * @param deckId null = ôn mọi deck,
+     * khác null = chỉ card thuộc deck đó.
+     * Retry / startAnotherSession giữ nguyên deck.
+     */
+    fun startSession(
+        deckId: Long? = null,
+    ) {
 
         if (
             _uiState.value != ReviewSessionUiState.Idle
         ) {
             return
         }
+
+        sessionDeckId =
+            deckId
 
         _uiState.value = ReviewSessionUiState.Loading
 
@@ -219,6 +359,9 @@ class ReviewSessionViewModel(
                                 remainingNewToday(
                                     now = now,
                                 ),
+
+                            deckId =
+                                deckId,
                         )
 
                 val lexemeIds = queue.map {
@@ -250,6 +393,7 @@ class ReviewSessionViewModel(
                         reviewRepository
                             .getUpcomingShortTerm(
                                 now = now,
+                                deckId = deckId,
                             )
                     }
 
@@ -284,7 +428,13 @@ class ReviewSessionViewModel(
                     queueComparator
                 )
 
-                reviewedCount = 0
+                sessionStats =
+                    ReviewSessionStats()
+
+                sessionStartedAt =
+                    now
+
+                undoStack.clear()
 
                 pendingRecovery =
                     ReviewSessionRecovery.LoadNextCard
@@ -300,7 +450,13 @@ class ReviewSessionViewModel(
 
                 throw cancellation
 
-            } catch (_: Exception) {
+            } catch (failure: Exception) {
+
+                logger.error(
+                    TAG,
+                    "Cannot start review session",
+                    failure,
+                )
 
                 _uiState.value =
                     ReviewSessionUiState.Failed(
@@ -361,7 +517,9 @@ class ReviewSessionViewModel(
         _uiState.value =
             ReviewSessionUiState.Idle
 
-        startSession()
+        startSession(
+            deckId = sessionDeckId,
+        )
     }
 
     fun retry() {
@@ -384,7 +542,9 @@ class ReviewSessionViewModel(
                 _uiState.value =
                     ReviewSessionUiState.Idle
 
-                startSession()
+                startSession(
+                    deckId = sessionDeckId,
+                )
             }
 
             ReviewSessionRecovery.LoadNextCard -> {
@@ -417,7 +577,247 @@ class ReviewSessionViewModel(
                     )
                 }
             }
+
+            is ReviewSessionRecovery
+                .ShowUndoneCard -> {
+
+                _uiState.value =
+                    ReviewSessionUiState.Loading
+
+                viewModelScope.launch {
+
+                    showUndoneCardSafely(
+                        lexemeId =
+                            recovery.lexemeId,
+                    )
+                }
+            }
         }
+    }
+
+    /*
+     * Hoàn tác rating gần nhất của session:
+     * DB về progress trước rating, queue / stats
+     * về snapshot, rồi hiện lại card đó ở mặt sau.
+     */
+    fun undoLastRating() {
+
+        val current =
+            _uiState.value
+                    as? ReviewSessionUiState.Active
+                ?: return
+
+        if (
+            current.isSubmitting ||
+            undoStack.isEmpty()
+        ) {
+            return
+        }
+
+        val entry =
+            undoStack.last()
+
+        /*
+         * Khoá Active như lúc submit:
+         * double tap không undo hai lần.
+         */
+        _uiState.value =
+            current.copy(
+                isSubmitting = true,
+                error = null,
+            )
+
+        viewModelScope.launch {
+
+            val result =
+                try {
+
+                    reviewRepository.undoReview(
+                        previousProgress =
+                            entry.previousProgress,
+
+                        savedProgress =
+                            entry.savedProgress,
+
+                        reviewLog =
+                            entry.reviewLog,
+                    )
+
+                } catch (
+                    cancellation:
+                    CancellationException,
+                ) {
+
+                    throw cancellation
+
+                } catch (failure: Exception) {
+
+                    logger.error(
+                        TAG,
+                        "Cannot undo review of lexeme " +
+                                entry.reviewLog.lexemeId,
+                        failure,
+                    )
+
+                    /*
+                     * Chưa hoàn tác: giữ undo stack
+                     * để user thử lại.
+                     */
+                    _uiState.value =
+                        current.copy(
+                            isSubmitting = false,
+
+                            error =
+                                ReviewSessionError
+                                    .UNDO_FAILED,
+                        )
+
+                    return@launch
+                }
+
+            when (result) {
+
+                is UndoReviewResult.Undone -> {
+
+                    undoStack.removeLast()
+
+                    sessionStats =
+                        entry.statsBefore
+
+                    pendingCards.clear()
+                    pendingCards +=
+                        entry.pendingBefore
+
+                    scheduledRepeats.clear()
+                    scheduledRepeats +=
+                        entry.repeatsBefore
+
+                    _uiState.value =
+                        ReviewSessionUiState.Loading
+
+                    showUndoneCardSafely(
+                        lexemeId =
+                            entry.reviewLog.lexemeId,
+                    )
+                }
+
+                is UndoReviewResult.StaleProgress,
+                UndoReviewResult.ReviewNotFound -> {
+
+                    /*
+                     * Rating gần nhất không hoàn tác được
+                     * → snapshot của rating cũ hơn
+                     * cũng không còn đúng.
+                     */
+                    undoStack.clear()
+
+                    _uiState.value =
+                        current.copy(
+                            isSubmitting = false,
+
+                            canUndo = false,
+
+                            error =
+                                ReviewSessionError
+                                    .UNDO_FAILED,
+                        )
+                }
+            }
+        }
+    }
+
+    private suspend fun showUndoneCardSafely(
+        lexemeId: Long,
+    ) {
+
+        pendingRecovery =
+            ReviewSessionRecovery
+                .ShowUndoneCard(
+                    lexemeId =
+                        lexemeId,
+                )
+
+        try {
+
+            showUndoneCard(
+                lexemeId =
+                    lexemeId,
+            )
+
+            pendingRecovery =
+                null
+
+        } catch (
+            cancellation:
+            CancellationException,
+        ) {
+
+            throw cancellation
+
+        } catch (failure: Exception) {
+
+            logger.error(
+                TAG,
+                "Cannot show undone lexeme $lexemeId",
+                failure,
+            )
+
+            _uiState.value =
+                ReviewSessionUiState.Failed(
+                    error =
+                        ReviewSessionError
+                            .LOAD_FAILED,
+                )
+        }
+    }
+
+    /*
+     * Mặt sau: user vừa thấy đáp án,
+     * chỉ cần chọn lại rating.
+     */
+    private suspend fun showUndoneCard(
+        lexemeId: Long,
+    ) {
+
+        val loaded =
+            loadCardOrSkip(
+                lexemeId
+            )
+
+        if (loaded == null) {
+
+            loadNextCard()
+            return
+        }
+
+        _uiState.value =
+            ReviewSessionUiState.Active(
+                card =
+                    loaded.card,
+
+                ratingIntervals =
+                    loaded.ratingIntervals,
+
+                isAnswerRevealed =
+                    true,
+
+                isSubmitting =
+                    false,
+
+                reviewedCount =
+                    reviewedCount,
+
+                remainingCount =
+                    1 +
+                            pendingCards.size +
+                            scheduledRepeats.size,
+
+                error =
+                    null,
+
+                canUndo =
+                    undoStack.isNotEmpty(),
+            )
     }
 
     fun onForeground() {
@@ -516,7 +916,14 @@ class ReviewSessionViewModel(
 
                     return@launch
 
-                } catch (_: Exception) {
+                } catch (failure: Exception) {
+
+                    logger.error(
+                        TAG,
+                        "Cannot save review of lexeme " +
+                                current.card.lexeme.id,
+                        failure,
+                    )
 
                     /*
                      * Review CHƯA được xác nhận save.
@@ -539,7 +946,45 @@ class ReviewSessionViewModel(
 
                 is SaveReviewResult.Saved -> {
 
-                    reviewedCount += 1
+                    /*
+                     * Chụp session trước khi rating này
+                     * đổi queue / stats.
+                     */
+                    undoStack.addLast(
+                        UndoEntry(
+                            previousProgress =
+                                current
+                                    .card
+                                    .progress,
+
+                            savedProgress =
+                                result.progress,
+
+                            reviewLog =
+                                result.reviewLog,
+
+                            statsBefore =
+                                sessionStats,
+
+                            pendingBefore =
+                                pendingCards.toList(),
+
+                            repeatsBefore =
+                                scheduledRepeats.toMap(),
+                        )
+                    )
+
+                    sessionStats =
+                        sessionStats.record(
+                            lexemeId =
+                                current
+                                    .card
+                                    .lexeme
+                                    .id,
+
+                            rating =
+                                rating,
+                        )
 
                     updateScheduledRepeat(
                         progress =
@@ -650,7 +1095,13 @@ class ReviewSessionViewModel(
 
             throw cancellation
 
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
+
+            logger.error(
+                TAG,
+                "Cannot load next review card",
+                failure,
+            )
 
             _uiState.value =
                 ReviewSessionUiState.Failed(
@@ -689,7 +1140,13 @@ class ReviewSessionViewModel(
 
             throw cancellation
 
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
+
+            logger.error(
+                TAG,
+                "Cannot reload lexeme $lexemeId after stale progress",
+                failure,
+            )
 
             _uiState.value =
                 ReviewSessionUiState.Failed(
@@ -835,12 +1292,12 @@ class ReviewSessionViewModel(
                 val item =
                     pendingCards.first()
 
-                val card =
-                    getReviewCardOrSkip(
+                val loaded =
+                    loadCardOrSkip(
                         item.lexemeId
                     )
 
-                if (card == null) {
+                if (loaded == null) {
 
                     pendingCards
                         .removeAt(0)
@@ -858,7 +1315,10 @@ class ReviewSessionViewModel(
                 _uiState.value =
                     ReviewSessionUiState.Active(
                         card =
-                            card,
+                            loaded.card,
+
+                        ratingIntervals =
+                            loaded.ratingIntervals,
 
                         isAnswerRevealed =
                             false,
@@ -883,6 +1343,9 @@ class ReviewSessionViewModel(
 
                         error =
                             null,
+
+                        canUndo =
+                            undoStack.isNotEmpty(),
                     )
 
                 return
@@ -903,8 +1366,15 @@ class ReviewSessionViewModel(
 
                 _uiState.value =
                     ReviewSessionUiState.Completed(
-                        reviewedCount =
-                            reviewedCount,
+                        stats =
+                            sessionStats,
+
+                        duration =
+                            Duration.between(
+                                sessionStartedAt
+                                    ?: now,
+                                now,
+                            ),
                     )
 
                 return
@@ -987,12 +1457,12 @@ class ReviewSessionViewModel(
         lexemeId: Long,
     ) {
 
-        val card =
-            getReviewCardOrSkip(
+        val loaded =
+            loadCardOrSkip(
                 lexemeId
             )
 
-        if (card == null) {
+        if (loaded == null) {
 
             loadNextCard()
             return
@@ -1001,7 +1471,10 @@ class ReviewSessionViewModel(
         _uiState.value =
             ReviewSessionUiState.Active(
                 card =
-                    card,
+                    loaded.card,
+
+                ratingIntervals =
+                    loaded.ratingIntervals,
 
                 isAnswerRevealed =
                     false,
@@ -1020,6 +1493,9 @@ class ReviewSessionViewModel(
                 error =
                     ReviewSessionError
                         .STALE_PROGRESS,
+
+                canUndo =
+                    undoStack.isNotEmpty(),
             )
     }
 
@@ -1030,15 +1506,38 @@ class ReviewSessionViewModel(
      * giống card đã bị xoá, thay vì kẹt cả
      * session ở LOAD_FAILED.
      */
-    private suspend fun getReviewCardOrSkip(
+    private suspend fun loadCardOrSkip(
         lexemeId: Long,
-    ): ReviewCard? =
-        try {
+    ): LoadedCard? {
 
-            reviewRepository
-                .getReviewCard(
-                    lexemeId
-                )
+        return try {
+
+            val card =
+                reviewRepository
+                    .getReviewCard(
+                        lexemeId
+                    )
+                    ?: return null
+
+            LoadedCard(
+                card =
+                    card,
+
+                /*
+                 * Tính lúc hiện card: progress mà
+                 * scheduler từ chối bị phát hiện
+                 * trước khi user trả lời.
+                 */
+                ratingIntervals =
+                    submitReviewUseCase
+                        .previewIntervals(
+                            progress =
+                                card.progress,
+
+                            reviewedAt =
+                                clock.instant(),
+                        ),
+            )
 
         } catch (
             corrupt:
@@ -1049,6 +1548,7 @@ class ReviewSessionViewModel(
 
             null
         }
+    }
 
     /*
      * Log và cách ly card: queue / badge của
@@ -1059,7 +1559,7 @@ class ReviewSessionViewModel(
         corrupt: CorruptReviewDataException,
     ) {
 
-        Log.e(
+        logger.error(
             TAG,
             "Skip lexeme ${corrupt.lexemeId}: " +
                     "invalid review data",
@@ -1094,7 +1594,7 @@ class ReviewSessionViewModel(
              * Không cách ly được vẫn skip card,
              * chỉ là session sau sẽ gặp lại nó.
              */
-            Log.e(
+            logger.error(
                 TAG,
                 "Cannot quarantine lexeme " +
                         corrupt.lexemeId,
@@ -1164,6 +1664,9 @@ class ReviewSessionViewModel(
 
         private val launchPolicy:
         ReviewSessionLaunchPolicy,
+
+        private val logger:
+        AppLogger,
     ) : ViewModelProvider.Factory {
 
         @Suppress("UNCHECKED_CAST")
@@ -1191,6 +1694,9 @@ class ReviewSessionViewModel(
 
                 launchPolicy =
                     launchPolicy,
+
+                logger =
+                    logger,
             ) as T
         }
     }

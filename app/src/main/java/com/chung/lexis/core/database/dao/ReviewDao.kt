@@ -13,6 +13,7 @@ import com.chung.lexis.core.database.entity.ReviewStateColumn
  * Mọi query queue / summary chỉ lấy lexeme học được:
  *
  * - thuộc ít nhất một deck
+ *   (deckId != null → thuộc đúng deck đó)
  * - có ít nhất một meaning (flashcard phải có đáp án)
  * - không bị cách ly vì data hỏng
  */
@@ -40,6 +41,28 @@ interface ReviewDao {
     suspend fun insertReviewLog(
         reviewLog: ReviewLogEntity,
     ): Long
+
+    @Query(
+        """
+        SELECT *
+        FROM review_logs
+        WHERE id = :reviewLogId
+        LIMIT 1
+        """
+    )
+    suspend fun getReviewLog(
+        reviewLogId: Long,
+    ): ReviewLogEntity?
+
+    @Query(
+        """
+        DELETE FROM review_logs
+        WHERE id = :reviewLogId
+        """
+    )
+    suspend fun deleteReviewLog(
+        reviewLogId: Long,
+    ): Int
 
     @Query(
         """
@@ -90,6 +113,7 @@ interface ReviewDao {
           SELECT 1
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
+            AND (:deckId IS NULL OR di.deckId = :deckId)
       )
       AND EXISTS (
           SELECT 1
@@ -112,6 +136,7 @@ interface ReviewDao {
         learningState: ReviewStateColumn,
         relearningState: ReviewStateColumn,
         limit: Int,
+        deckId: Long?,
     ): List<LearningProgressEntity>
 
     @Query(
@@ -128,6 +153,7 @@ interface ReviewDao {
           SELECT 1
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
+            AND (:deckId IS NULL OR di.deckId = :deckId)
       )
       AND EXISTS (
           SELECT 1
@@ -148,6 +174,7 @@ interface ReviewDao {
         nowEpochMillis: Long,
         learningState: ReviewStateColumn,
         relearningState: ReviewStateColumn,
+        deckId: Long?,
     ): List<LearningProgressEntity>
 
 
@@ -162,6 +189,7 @@ interface ReviewDao {
           SELECT 1
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
+            AND (:deckId IS NULL OR di.deckId = :deckId)
       )
       AND EXISTS (
           SELECT 1
@@ -183,6 +211,7 @@ interface ReviewDao {
         nowEpochMillis: Long,
         reviewState: ReviewStateColumn,
         limit: Int,
+        deckId: Long?,
     ): List<LearningProgressEntity>
 
     /*
@@ -205,6 +234,7 @@ interface ReviewDao {
           p.lexemeId IS NULL
           OR p.state = :newState
       )
+      AND (:deckId IS NULL OR di.deckId = :deckId)
       AND EXISTS (
           SELECT 1
           FROM meanings AS m
@@ -228,6 +258,7 @@ interface ReviewDao {
     suspend fun getNewLexemeIds(
         newState: ReviewStateColumn,
         limit: Int,
+        deckId: Long?,
     ): List<Long>
 
     @Query(
@@ -244,6 +275,7 @@ interface ReviewDao {
           SELECT 1
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
+            AND (:deckId IS NULL OR di.deckId = :deckId)
       )
       AND EXISTS (
           SELECT 1
@@ -261,6 +293,7 @@ interface ReviewDao {
         nowEpochMillis: Long,
         learningState: ReviewStateColumn,
         relearningState: ReviewStateColumn,
+        deckId: Long?,
     ): Int
 
     @Query(
@@ -274,6 +307,7 @@ interface ReviewDao {
           SELECT 1
           FROM deck_items AS di
           WHERE di.lexemeId = p.lexemeId
+            AND (:deckId IS NULL OR di.deckId = :deckId)
       )
       AND EXISTS (
           SELECT 1
@@ -290,6 +324,7 @@ interface ReviewDao {
     suspend fun countDueReview(
         nowEpochMillis: Long,
         reviewState: ReviewStateColumn,
+        deckId: Long?,
     ): Int
 
     @Query(
@@ -307,6 +342,7 @@ interface ReviewDao {
           p.lexemeId IS NULL
           OR p.state = :newState
       )
+      AND (:deckId IS NULL OR di.deckId = :deckId)
       AND EXISTS (
           SELECT 1
           FROM meanings AS m
@@ -321,6 +357,7 @@ interface ReviewDao {
     )
     suspend fun countNewAvailable(
         newState: ReviewStateColumn,
+        deckId: Long?,
     ): Int
 
     @Query(
@@ -347,6 +384,7 @@ interface ReviewDao {
           FROM deck_items AS di
           WHERE di.lexemeId =
                 p.lexemeId
+            AND (:deckId IS NULL OR di.deckId = :deckId)
       )
 
       AND EXISTS (
@@ -372,5 +410,6 @@ interface ReviewDao {
         ReviewStateColumn,
         reviewState:
         ReviewStateColumn,
+        deckId: Long?,
     ): Long?
 }

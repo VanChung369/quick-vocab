@@ -9,6 +9,7 @@ import com.chung.lexis.domain.repository.ReviewRepository
 import com.chung.lexis.domain.repository.SaveReviewResult
 import com.chung.lexis.domain.scheduler.ReviewSchedule
 import com.chung.lexis.domain.scheduler.ReviewScheduler
+import java.time.Duration
 import java.time.Instant
 
 class SubmitReviewUseCase(
@@ -27,48 +28,18 @@ class SubmitReviewUseCase(
         reviewedAt: Instant,
     ): SaveReviewResult {
 
-        /*
-         * Clock máy có thể bị lùi (user chỉnh giờ, NTP sync).
-         * Không throw: kẹp về lastReviewedAt để
-         * thời điểm review không bao giờ đi lùi.
-         */
         val effectiveReviewedAt =
-            progress.lastReviewedAt
-                ?.let { lastReviewedAt ->
-                    maxOf(
-                        reviewedAt,
-                        lastReviewedAt,
-                    )
-                }
-                ?: reviewedAt
+            effectiveReviewedAt(
+                progress = progress,
+                reviewedAt = reviewedAt,
+            )
 
-        /*
-         * Scheduler là pure function:
-         * require/check fail ở đây là data hỏng,
-         * retry không giúp gì.
-         */
         val schedule =
-            try {
-                scheduleChecked(
-                    current = progress,
-                    rating = rating,
-                    reviewedAt = effectiveReviewedAt,
-                )
-            } catch (
-                invalid: IllegalArgumentException,
-            ) {
-                throw CorruptReviewDataException(
-                    lexemeId = progress.lexemeId,
-                    cause = invalid,
-                )
-            } catch (
-                invalid: IllegalStateException,
-            ) {
-                throw CorruptReviewDataException(
-                    lexemeId = progress.lexemeId,
-                    cause = invalid,
-                )
-            }
+            scheduleOrCorrupt(
+                current = progress,
+                rating = rating,
+                reviewedAt = effectiveReviewedAt,
+            )
 
         val reviewLog =
             ReviewLog(
@@ -97,6 +68,96 @@ class SubmitReviewUseCase(
             reviewLog = reviewLog,
         )
     }
+
+    /**
+     * Khoảng tới lần ôn tiếp theo của từng rating
+     * nếu submit [progress] lúc [reviewedAt]. Không lưu gì.
+     *
+     * @throws CorruptReviewDataException nếu scheduler
+     * từ chối progress, giống [invoke].
+     */
+    fun previewIntervals(
+        progress: LearningProgress,
+        reviewedAt: Instant,
+    ): Map<ReviewRating, Duration> {
+
+        val effectiveReviewedAt =
+            effectiveReviewedAt(
+                progress = progress,
+                reviewedAt = reviewedAt,
+            )
+
+        return ReviewRating.entries.associateWith { rating ->
+
+            val schedule =
+                scheduleOrCorrupt(
+                    current = progress,
+                    rating = rating,
+                    reviewedAt = effectiveReviewedAt,
+                )
+
+            /*
+             * scheduleChecked đã đảm bảo nextReviewAt
+             * khác null và không trước reviewedAt.
+             */
+            Duration.between(
+                effectiveReviewedAt,
+                checkNotNull(
+                    schedule.progress.nextReviewAt
+                ),
+            )
+        }
+    }
+
+    /*
+     * Clock máy có thể bị lùi (user chỉnh giờ, NTP sync).
+     * Không throw: kẹp về lastReviewedAt để
+     * thời điểm review không bao giờ đi lùi.
+     */
+    private fun effectiveReviewedAt(
+        progress: LearningProgress,
+        reviewedAt: Instant,
+    ): Instant =
+        progress.lastReviewedAt
+            ?.let { lastReviewedAt ->
+                maxOf(
+                    reviewedAt,
+                    lastReviewedAt,
+                )
+            }
+            ?: reviewedAt
+
+    /*
+     * Scheduler là pure function:
+     * require/check fail ở đây là data hỏng,
+     * retry không giúp gì.
+     */
+    private fun scheduleOrCorrupt(
+        current: LearningProgress,
+        rating: ReviewRating,
+        reviewedAt: Instant,
+    ): ReviewSchedule =
+        try {
+            scheduleChecked(
+                current = current,
+                rating = rating,
+                reviewedAt = reviewedAt,
+            )
+        } catch (
+            invalid: IllegalArgumentException,
+        ) {
+            throw CorruptReviewDataException(
+                lexemeId = current.lexemeId,
+                cause = invalid,
+            )
+        } catch (
+            invalid: IllegalStateException,
+        ) {
+            throw CorruptReviewDataException(
+                lexemeId = current.lexemeId,
+                cause = invalid,
+            )
+        }
 
     private fun scheduleChecked(
         current: LearningProgress,
