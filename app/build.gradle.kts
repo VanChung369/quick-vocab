@@ -66,4 +66,15 @@ dependencies {
     androidTestImplementation(libs.androidx.room.testing)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
+
+    constraints {
+        /*
+         * androidTest bị ép theo version của app (1.7.3 qua navigation),
+         * nhưng room-testing cần 1.8.1: thiếu constraint này
+         * MigrationTestHelper crash AbstractMethodError.
+         */
+        implementation(libs.kotlinx.serialization.core) {
+            because("room-testing 2.8.5 requires kotlinx-serialization 1.8.1")
+        }
+    }
 }
