@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="vendor/offline.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Noto+Sans:wght@400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0">
+<style>body{margin:0;background:#E9EAEF;font-family:'Be Vietnam Pro',sans-serif;color:#1A1B21}a{color:#4851B5}a:hover{color:#323B9C}</style>
+</helmet>
+<div style="max-width:1240px;margin:0 auto;padding:56px 40px 96px;display:flex;flex-direction:column;gap:56px">
+
+<section style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">
+<img src="logo/lexis-icon-72.svg" alt="Lexis app icon" style="width:112px;height:112px;border-radius:50%;display:block">
+<div style="flex:1;min-width:240px">
+<div style="font:600 72px/1 'Be Vietnam Pro',sans-serif;letter-spacing:-0.03em">Lexis</div>
+<div style="font:400 17px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:10px">Logo and Android app icon</div>
+</div>
+<a href="Lexis App Design.dc.html" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:12px 16px;border-radius:20px;background:#E2E4F3;color:#252A4A;display:flex;align-items:center;gap:6px"><span aria-hidden="true" style="font-family:'Material Symbols Rounded';font-size:18px">arrow_back</span>App design</a>
+</section>
+
+<section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:48px;align-items:center;background:#FAFAFC;border-radius:28px;padding:48px">
+<div style="display:flex;justify-content:center"><img src="logo/lexis-icon-72.svg" alt="Lexis app icon, large" style="width:100%;max-width:340px;aspect-ratio:1;border-radius:30%;display:block;box-shadow:0 8px 28px rgba(16,17,22,.14)"></div>
+<div style="display:flex;flex-direction:column;gap:28px">
+<div style="font:600 28px/1.25 'Be Vietnam Pro',sans-serif;letter-spacing:-0.01em;text-wrap:balance">A stress mark and an L. The first thing you learn about a word is how to say it.</div>
+<div style="display:grid;grid-template-columns:64px minmax(0,1fr);gap:20px 20px;align-items:start">
+<div style="font:400 56px/0.9 'Noto Sans',sans-serif;color:#4851B5;text-align:center">ˈ</div>
+<div><div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">The IPA primary-stress mark</div><div style="font:400 15px/1.55 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:4px;text-wrap:pretty">It sits before the stressed syllable, as in /ˈlɛksɪs/. It ties the mark to pronunciation, which the app adds to every word.</div></div>
+<div style="font:600 52px/0.9 'Be Vietnam Pro',sans-serif;color:#4851B5;text-align:center">L</div>
+<div><div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">A caret and a baseline</div><div style="font:400 15px/1.55 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:4px;text-wrap:pretty">The upright reads as a text cursor (adding a word), the foot as the underline that marks a word inside an example sentence.</div></div>
+</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:36px;height:36px;border-radius:10px;background:#4851B5"></span><span style="font:400 13px/1.35 ui-monospace,Menlo,monospace;color:#575A66">#4851B5<br>Primary</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:36px;height:36px;border-radius:10px;background:#BAC0FF"></span><span style="font:400 13px/1.35 ui-monospace,Menlo,monospace;color:#575A66">#BAC0FF<br>Stress mark</span></div>
+<div style="display:flex;align-items:center;gap:10px"><span style="width:36px;height:36px;border-radius:10px;background:#FFFFFF;box-shadow:inset 0 0 0 1px #D6D7DE"></span><span style="font:400 13px/1.35 ui-monospace,Menlo,monospace;color:#575A66">#FFFFFF<br>Letter</span></div>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<div><div style="font:600 24px/1.3 'Be Vietnam Pro',sans-serif">Construction</div><div style="font:400 15px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:4px">108 dp adaptive icon canvas. Launchers show the inner 72 dp; the mark stays inside the 66 dp safe circle.</div></div>
+<div style="display:flex;gap:24px;flex-wrap:wrap">
+<div style="background:#FAFAFC;border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:12px">
+<svg width="324" height="324" viewBox="0 0 108 108" role="img" aria-label="Construction grid">
+<rect x="0" y="0" width="108" height="108" fill="#4851B5"></rect>
+<g stroke="#FFFFFF" stroke-opacity=".14" stroke-width=".3"><path d="M9 0V108M18 0V108M27 0V108M36 0V108M45 0V108M54 0V108M63 0V108M72 0V108M81 0V108M90 0V108M99 0V108M0 9H108M0 18H108M0 27H108M0 36H108M0 45H108M0 54H108M0 63H108M0 72H108M0 81H108M0 90H108M0 99H108"></path></g>
+<rect x="18" y="18" width="72" height="72" fill="none" stroke="#FFFFFF" stroke-opacity=".5" stroke-width=".5" stroke-dasharray="2 1.5"></rect>
+<circle cx="54" cy="54" r="33" fill="none" stroke="#FCE3B2" stroke-opacity=".8" stroke-width=".5" stroke-dasharray="2 1.5"></circle>
+<path d="M36 38V48" fill="none" stroke="#BAC0FF" stroke-width="7" stroke-linecap="round"></path>
+<path d="M50 38V70H70" fill="none" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<div style="display:flex;gap:16px;font:400 12px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66"><span>— — 72 dp visible area</span><span style="color:#8C5A00">— — 66 dp safe zone</span></div>
+</div>
+<div style="flex:1;min-width:280px;background:#FAFAFC;border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:14px;font:400 14px/1.55 'Be Vietnam Pro',sans-serif;color:#575A66">
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif;color:#1A1B21">Geometry</div>
+<div>L stroke 11 dp, round caps and join. Upright from y 38 to 70, foot to x 70.</div>
+<div>Stress mark 7 dp, from y 38 to 48 at x 36. It starts level with the top of the L and stays shorter than half its height.</div>
+<div>The pair is optically centred: the mark adds weight top-left, the foot of the L balances it bottom-right.</div>
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif;color:#1A1B21;margin-top:8px">Layers</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center"><img src="logo/lexis-background.svg" alt="Background layer" style="width:96px;height:96px;border-radius:12px;display:block"><span style="font:500 12px/1.3 'Be Vietnam Pro',sans-serif">Background</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="width:96px;height:96px;border-radius:12px;background:#767986;display:block"><img src="logo/lexis-foreground.svg" alt="Foreground layer" style="width:96px;height:96px;display:block"></span><span style="font:500 12px/1.3 'Be Vietnam Pro',sans-serif">Foreground</span></div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:center"><span style="width:96px;height:96px;border-radius:12px;background:#FFFFFF;box-shadow:inset 0 0 0 1px #D6D7DE;display:block"><img src="logo/lexis-monochrome.svg" alt="Monochrome layer" style="width:96px;height:96px;display:block"></span><span style="font:500 12px/1.3 'Be Vietnam Pro',sans-serif">Monochrome</span></div>
+</div>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<div><div style="font:600 24px/1.3 'Be Vietnam Pro',sans-serif">Launcher masks</div><div style="font:400 15px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:4px">Each launcher crops the icon differently. The mark holds up in all of them.</div></div>
+<div style="display:flex;gap:40px;flex-wrap:wrap;background:#FAFAFC;border-radius:20px;padding:32px">
+<div style="display:flex;flex-direction:column;gap:10px;align-items:center"><img src="logo/lexis-icon-72.svg" alt="Circle mask" style="width:120px;height:120px;border-radius:50%;display:block"><span style="font:500 13px/1 'Be Vietnam Pro',sans-serif;color:#575A66">Circle</span></div>
+<div style="display:flex;flex-direction:column;gap:10px;align-items:center"><img src="logo/lexis-icon-72.svg" alt="Squircle mask" style="width:120px;height:120px;border-radius:36%;display:block"><span style="font:500 13px/1 'Be Vietnam Pro',sans-serif;color:#575A66">Squircle</span></div>
+<div style="display:flex;flex-direction:column;gap:10px;align-items:center"><img src="logo/lexis-icon-72.svg" alt="Rounded square mask" style="width:120px;height:120px;border-radius:22%;display:block"><span style="font:500 13px/1 'Be Vietnam Pro',sans-serif;color:#575A66">Rounded square</span></div>
+<div style="display:flex;flex-direction:column;gap:10px;align-items:center"><img src="logo/lexis-icon-72.svg" alt="Teardrop mask" style="width:120px;height:120px;border-radius:50% 50% 50% 16%;display:block"><span style="font:500 13px/1 'Be Vietnam Pro',sans-serif;color:#575A66">Teardrop</span></div>
+<div style="display:flex;flex-direction:column;gap:10px;align-items:center"><img src="logo/lexis-icon-72.svg" alt="Square, Play Store" style="width:120px;height:120px;border-radius:20%;display:block;box-shadow:0 2px 6px rgba(16,17,22,.15)"><span style="font:500 13px/1 'Be Vietnam Pro',sans-serif;color:#575A66">Play Store</span></div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<div><div style="font:600 24px/1.3 'Be Vietnam Pro',sans-serif">On the home screen</div><div style="font:400 15px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:4px">Full colour, and Android 13+ themed icons built from the monochrome layer.</div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:24px">
+<div style="border-radius:28px;padding:32px 28px;background:linear-gradient(165deg,#7F8DB8 0%,#A9B3D2 50%,#D3D8E6 100%)">
+<div style="font:500 13px/1 'Be Vietnam Pro',sans-serif;color:#fff;margin-bottom:20px">Full colour</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px 8px;justify-items:center">
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><img src="logo/lexis-icon-72.svg" alt="" style="width:60px;height:60px;border-radius:50%;display:block"><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.3)">Lexis</span></div>
+<sc-for list="{{ apps }}" as="a" hint-placeholder-count="7"><div style="display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.92);color:#3a3d4a;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Rounded';font-size:28px">{{ a.icon }}</span></span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.3)">{{ a.label }}</span></div></sc-for>
+</div>
+</div>
+<div style="border-radius:28px;padding:32px 28px;background:linear-gradient(165deg,#C9CEEA 0%,#DDE0F2 60%,#EEF0F8 100%)">
+<div style="font:500 13px/1 'Be Vietnam Pro',sans-serif;color:#1B2272;margin-bottom:20px">Themed · light</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px 8px;justify-items:center">
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><img src="logo/lexis-themed-light-72.svg" alt="" style="width:60px;height:60px;border-radius:50%;display:block"><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#1B2272">Lexis</span></div>
+<sc-for list="{{ apps }}" as="a" hint-placeholder-count="7"><div style="display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:60px;height:60px;border-radius:50%;background:#E0E2FF;color:#1B2272;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Rounded';font-size:28px">{{ a.icon }}</span></span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#1B2272">{{ a.label }}</span></div></sc-for>
+</div>
+</div>
+<div style="border-radius:28px;padding:32px 28px;background:linear-gradient(165deg,#1C2134 0%,#2B3250 55%,#40486A 100%)">
+<div style="font:500 13px/1 'Be Vietnam Pro',sans-serif;color:#fff;margin-bottom:20px">Themed · dark</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px 8px;justify-items:center">
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><img src="logo/lexis-themed-dark-72.svg" alt="" style="width:60px;height:60px;border-radius:50%;display:block"><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#E4E4EB">Lexis</span></div>
+<sc-for list="{{ apps }}" as="a" hint-placeholder-count="7"><div style="display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:60px;height:60px;border-radius:50%;background:#30334A;color:#DDE0F7;display:grid;place-items:center"><span aria-hidden="true" style="font-family:'Material Symbols Rounded';font-size:28px">{{ a.icon }}</span></span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#E4E4EB">{{ a.label }}</span></div></sc-for>
+</div>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<div><div style="font:600 24px/1.3 'Be Vietnam Pro',sans-serif">Sizes</div><div style="font:400 15px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:4px">The stress mark stays visible down to 24 px. Below that, use the notification glyph.</div></div>
+<div style="display:flex;gap:32px;align-items:flex-end;flex-wrap:wrap;background:#FAFAFC;border-radius:20px;padding:32px">
+<sc-for list="{{ sizes }}" as="z" hint-placeholder-count="6"><div style="display:flex;flex-direction:column;align-items:center;gap:10px"><img src="logo/lexis-icon-72.svg" alt="" style="width:{{ z.px }};height:{{ z.px }};border-radius:50%;display:block"><span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#575A66">{{ z.label }}</span></div></sc-for>
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-left:16px">
+<div style="height:32px;padding:0 14px;border-radius:16px;background:#1A1B21;display:flex;align-items:center;gap:10px;color:#fff;font:500 13px/1 'Be Vietnam Pro',sans-serif"><span>21:24</span><img src="logo/lexis-notification.svg" alt="" style="width:16px;height:16px;display:block"><span aria-hidden="true" style="font-family:'Material Symbols Rounded';font-size:16px">wifi</span></div>
+<span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#575A66">status bar · 24 dp</span>
+</div>
+</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:20px">
+<div><div style="font:600 24px/1.3 'Be Vietnam Pro',sans-serif">Lockups</div><div style="font:400 15px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:4px">Wordmark set in Be Vietnam Pro SemiBold, tracking −2%. The icon is the height of the cap plus half.</div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:24px">
+<div style="height:200px;border-radius:20px;background:#FAFAFC;display:flex;align-items:center;justify-content:center;gap:16px"><img src="logo/lexis-icon-72.svg" alt="" style="width:64px;height:64px;border-radius:30%;display:block"><span style="font:600 52px/1 'Be Vietnam Pro',sans-serif;letter-spacing:-0.02em;color:#1A1B21">Lexis</span></div>
+<div style="height:200px;border-radius:20px;background:#4851B5;display:flex;align-items:center;justify-content:center;gap:14px"><img src="logo/lexis-notification.svg" alt="" style="width:60px;height:60px;display:block"><span style="font:600 52px/1 'Be Vietnam Pro',sans-serif;letter-spacing:-0.02em;color:#FFFFFF">Lexis</span></div>
+<div style="height:200px;border-radius:20px;background:#121318;display:flex;align-items:center;justify-content:center;gap:16px"><img src="logo/lexis-icon-72.svg" alt="" style="width:64px;height:64px;border-radius:30%;display:block"><span style="font:600 52px/1 'Be Vietnam Pro',sans-serif;letter-spacing:-0.02em;color:#E4E4EB">Lexis</span></div>
+<div style="height:200px;border-radius:20px;background:#FAFAFC;display:flex;align-items:center;justify-content:center;gap:12px"><img src="logo/lexis-mark.svg" alt="" style="width:56px;height:56px;display:block"><span style="font:600 52px/1 'Be Vietnam Pro',sans-serif;letter-spacing:-0.02em;color:#1A1B21">Lexis</span></div>
+<div style="height:200px;border-radius:20px;background:#FAFAFC;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px"><img src="logo/lexis-icon-72.svg" alt="" style="width:72px;height:72px;border-radius:30%;display:block"><span style="font:600 32px/1 'Be Vietnam Pro',sans-serif;letter-spacing:-0.02em;color:#1A1B21">Lexis</span></div>
+<div style="height:200px;border-radius:20px;background:#FAFAFC;display:flex;align-items:center;justify-content:center"><div style="padding:24px;outline:1px dashed #9AA0E8;display:flex;align-items:center;gap:14px"><img src="logo/lexis-icon-72.svg" alt="" style="width:48px;height:48px;border-radius:30%;display:block"><span style="font:600 38px/1 'Be Vietnam Pro',sans-serif;letter-spacing:-0.02em">Lexis</span></div></div>
+</div>
+<div style="font:400 13px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66">Clear space on all sides equals half the icon height (dashed). Minimum lockup width 96 px.</div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+<div style="font:600 24px/1.3 'Be Vietnam Pro',sans-serif">Files</div>
+<div style="background:#FAFAFC;border-radius:20px;padding:8px 0">
+<sc-for list="{{ files }}" as="x" hint-placeholder-count="8">
+<div style="display:flex;align-items:center;gap:16px;padding:12px 24px;min-height:56px">
+<span style="flex:none;width:44px;height:44px;border-radius:10px;background:{{ x.bg }};display:grid;place-items:center;overflow:hidden"><img src="{{ x.path }}" alt="" style="width:36px;height:36px;display:block"></span>
+<div style="flex:1;min-width:0"><div style="font:500 15px/1.4 ui-monospace,Menlo,monospace">{{ x.name }}</div><div style="font:400 13px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66">{{ x.use }}</div></div>
+<a href="{{ x.path }}" download="{{ x.name }}" style="flex:none;font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#E2E4F3;color:#252A4A;display:flex;align-items:center;gap:6px"><span aria-hidden="true" style="font-family:'Material Symbols Rounded';font-size:18px">download</span>Download</a>
+</div>
+</sc-for>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      apps: [['call', 'Phone'], ['chat', 'Messages'], ['photo_camera', 'Camera'], ['public', 'Browser'], ['mail', 'Mail'], ['calendar_month', 'Calendar'], ['map', 'Maps']].map(([icon, label]) => ({ icon, label })),
+      sizes: [192, 144, 96, 72, 48, 24].map(n => ({ px: n + 'px', label: n + ' px' })),
+      files: [
+        ['lexis-playstore-512.png', 'Google Play listing icon, 512 × 512', '#4851B5'],
+        ['lexis-icon.svg', 'Full 108 dp adaptive canvas, flattened', '#4851B5'],
+        ['lexis-background.svg', 'Adaptive icon · background layer', '#4851B5'],
+        ['lexis-foreground.svg', 'Adaptive icon · foreground layer', '#767986'],
+        ['lexis-monochrome.svg', 'Adaptive icon · monochrome layer for themed icons', '#FFFFFF'],
+        ['lexis-icon-72.svg', 'Visible 72 dp area, for in-app use and mockups', '#4851B5'],
+        ['lexis-notification.svg', 'White glyph for the status bar and on primary', '#4851B5'],
+        ['lexis-mark.svg', 'Colour mark for light backgrounds, without tile', '#FFFFFF'],
+      ].map(([name, use, bg]) => ({ name, use, bg, path: 'logo/' + name })),
+    };
+  }
+}
+</script>
+</body>
+</html>

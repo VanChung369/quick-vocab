@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="vendor/offline.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600&family=Noto+Sans:wght@400;500&family=Noto+Sans+JP:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..600,0..1,0">
+<style>body{margin:0;background:#E9EAEF;font-family:'Be Vietnam Pro','Noto Sans',sans-serif;color:#1A1B21}a{color:#4851B5}a:hover{color:#323B9C}</style>
+</helmet>
+<div style="padding:56px 64px 96px;display:flex;flex-direction:column;gap:72px">
+
+<section id="intro" style="display:grid;grid-template-columns:minmax(0,1fr) 432px;gap:64px;align-items:start;max-width:1400px">
+<div>
+<div style="display:flex;align-items:center;gap:14px"><img src="logo/lexis-icon-72.svg" alt="Lexis" style="width:44px;height:44px;border-radius:13px;display:block"><span style="font:600 20px/1 'Be Vietnam Pro',sans-serif">Lexis</span></div>
+<div style="font:600 44px/1.15 'Be Vietnam Pro',sans-serif;letter-spacing:-0.02em;margin-top:28px;max-width:720px;text-wrap:balance">Android vocabulary app: a personal word database, fast capture, flashcards, and home screen widgets.</div>
+<p style="font:400 17px/1.6 'Be Vietnam Pro',sans-serif;color:#575A66;max-width:680px;margin:20px 0 0;text-wrap:pretty">Một hướng visual duy nhất, làm lại từ đầu: sans-serif (Be Vietnam Pro + Noto cho IPA, Kana, Hanzi), nền trung tính lạnh, một màu nhấn indigo trầm, phân cấp bằng tông surface của Material 3 thay vì viền. Mọi điện thoại trên trang đều là prototype bấm được.</p>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 32px;margin-top:32px;max-width:760px">
+<div style="font:600 14px/1.4 'Be Vietnam Pro',sans-serif">Flow chính, thử trên điện thoại bên phải</div><div></div>
+<div style="font:400 14px/1.6 'Be Vietnam Pro',sans-serif;color:#575A66">1. Home → Add a word… → gõ <b>perseverance</b> → Save → bấm từ vừa lưu<br>2. Home → See all → IELTS 3000 → bấm một từ → vuốt ngang để sang từ khác<br>3. Home → Review → Show answer → swipe or tap a rating … → Done</div>
+<div style="font:400 14px/1.6 'Be Vietnam Pro',sans-serif;color:#575A66">4. Home → On your widget → Create widget → Add to Home Screen<br>5. Decks → Import → oxford_10k.csv → Import → Go to deck<br>Avatar M → Progress, Favorites, Widgets, Settings</div>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:28px">
+<a href="Lexis Logo.dc.html" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#4851B5;color:#fff">Logo and app icon</a>
+<a href="#ds" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#E2E4F3;color:#252A4A">Design system</a>
+<a href="#core" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#E2E4F3;color:#252A4A">Core screens</a>
+<a href="#all" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#E2E4F3;color:#252A4A">All screens</a>
+<a href="#widgets" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#E2E4F3;color:#252A4A">Widgets</a>
+<a href="#widget-styles" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#E2E4F3;color:#252A4A">Widget styles</a>
+<a href="#scenes" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#E2E4F3;color:#252A4A">Scene widgets</a>
+<a href="#dark" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#E2E4F3;color:#252A4A">Dark mode</a>
+<a href="#states" style="font:500 14px/1 'Be Vietnam Pro',sans-serif;text-decoration:none;padding:10px 14px;border-radius:18px;background:#E2E4F3;color:#252A4A">States and edge cases</a>
+</div>
+</div>
+<div id="proto" style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:center;gap:8px;font:500 13px/1 'Be Vietnam Pro',sans-serif;color:#575A66"><span style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff">P</span>Prototype · starts at Home</div><dc-import name="LexisPhone" start="home" theme="{{ theme }}" fs="{{ fs }}" hint-size="432px,912px"></dc-import></div>
+</section>
+
+<section id="ds" style="display:flex;flex-direction:column;gap:28px;max-width:1500px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff">DS</span><span style="font:600 28px/1.2 'Be Vietnam Pro',sans-serif">Design system</span></div>
+
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px">
+<div style="background:#FAFAFC;border-radius:20px;padding:28px">
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">Color · Light</div>
+<div style="font:400 13px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:2px">One accent. Hierarchy comes from surface tones, not borders.</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px">
+<sc-for list="{{ swL }}" as="c" hint-placeholder-count="16"><div><div style="height:56px;border-radius:12px;background:{{ c.hex }};box-shadow:inset 0 0 0 1px rgba(26,27,33,.08)"></div><div style="font:500 12px/1.3 'Be Vietnam Pro',sans-serif;margin-top:6px">{{ c.name }}</div><div style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:#575A66">{{ c.hex }}</div></div></sc-for>
+</div>
+</div>
+<div style="background:#121318;border-radius:20px;padding:28px;color:#E4E4EB">
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">Color · Dark</div>
+<div style="font:400 13px/1.5 'Be Vietnam Pro',sans-serif;color:#ABADBA;margin-top:2px">Same roles, derived tones. Primary lightens, containers deepen.</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px">
+<sc-for list="{{ swD }}" as="c" hint-placeholder-count="16"><div><div style="height:56px;border-radius:12px;background:{{ c.hex }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)"></div><div style="font:500 12px/1.3 'Be Vietnam Pro',sans-serif;margin-top:6px">{{ c.name }}</div><div style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:#ABADBA">{{ c.hex }}</div></div></sc-for>
+</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:24px">
+<div style="background:#FAFAFC;border-radius:20px;padding:28px">
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">Typography</div>
+<div style="font:400 13px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:2px">Be Vietnam Pro for UI and Vietnamese. Noto Sans for IPA. Noto Sans JP / SC for Kana, Kanji, Hanzi. All sizes in sp and scale with system font size.</div>
+<div style="margin-top:16px">
+<sc-for list="{{ typeRows }}" as="t" hint-placeholder-count="10">
+<div style="display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:baseline;padding:10px 0">
+<div><div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif">{{ t.role }}</div><div style="font:400 11px/1.4 ui-monospace,Menlo,monospace;color:#575A66">{{ t.spec }}</div></div>
+<div lang="{{ t.lang }}" style="font:{{ t.font }};color:#1A1B21;overflow-wrap:anywhere">{{ t.sample }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="background:#FAFAFC;border-radius:20px;padding:28px">
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">Spacing</div>
+<div style="display:flex;align-items:flex-end;gap:16px;margin-top:16px">
+<sc-for list="{{ spacing }}" as="s" hint-placeholder-count="6"><div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:{{ s.px }};height:{{ s.px }};background:#E0E2FF;border-radius:3px"></div><span style="font:400 12px/1 ui-monospace,Menlo,monospace;color:#575A66">{{ s.v }}</span></div></sc-for>
+</div>
+<div style="font:400 13px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:14px">Screen margin 16. Content inside surfaces 16–20. Section gap 24–32. Touch targets 48dp.</div>
+</div>
+<div style="background:#FAFAFC;border-radius:20px;padding:28px">
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">Radius</div>
+<div style="display:flex;gap:16px;margin-top:16px;flex-wrap:wrap">
+<sc-for list="{{ radii }}" as="r" hint-placeholder-count="6"><div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:56px;height:56px;background:#EDEDF2;border-radius:{{ r.px }}"></div><span style="font:400 11px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66;text-align:center">{{ r.v }}<br>{{ r.use }}</span></div></sc-for>
+</div>
+</div>
+<div style="background:#FAFAFC;border-radius:20px;padding:28px">
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">Surfaces and elevation</div>
+<div style="display:flex;gap:12px;margin-top:16px">
+<div style="flex:1;height:64px;border-radius:12px;background:#FAFAFC;box-shadow:inset 0 0 0 1px #D6D7DE;display:grid;place-items:center;font:500 12px/1.3 'Be Vietnam Pro',sans-serif;text-align:center">Surface<br><span style="color:#575A66;font-weight:400">screens</span></div>
+<div style="flex:1;height:64px;border-radius:12px;background:#F3F3F7;display:grid;place-items:center;font:500 12px/1.3 'Be Vietnam Pro',sans-serif;text-align:center">Low<br><span style="color:#575A66;font-weight:400">hero, sheet</span></div>
+<div style="flex:1;height:64px;border-radius:12px;background:#E6E6EC;display:grid;place-items:center;font:500 12px/1.3 'Be Vietnam Pro',sans-serif;text-align:center">High<br><span style="color:#575A66;font-weight:400">fields</span></div>
+<div style="flex:1;height:64px;border-radius:12px;background:#FFFFFF;box-shadow:0 2px 6px rgba(16,17,22,.10),0 6px 18px rgba(16,17,22,.08);display:grid;place-items:center;font:500 12px/1.3 'Be Vietnam Pro',sans-serif;text-align:center">Level 2<br><span style="color:#575A66;font-weight:400">FAB, menu</span></div>
+</div>
+<div style="font:400 13px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66;margin-top:14px">Shadows only on things that float: FAB, menus, snackbars, dialogs, widgets.</div>
+</div>
+</div>
+</div>
+
+<div style="background:#FAFAFC;border-radius:20px;padding:28px">
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">Components</div>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px 48px;margin-top:20px">
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Buttons</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+<span style="height:48px;padding:0 24px;border-radius:24px;background:#4851B5;color:#fff;font:500 14px/48px 'Be Vietnam Pro',sans-serif">Review</span>
+<span style="height:48px;padding:0 20px;border-radius:24px;background:#E2E4F3;color:#252A4A;font:500 14px/48px 'Be Vietnam Pro',sans-serif">Import</span>
+<span style="height:48px;padding:0 16px;border-radius:24px;color:#4851B5;font:500 14px/48px 'Be Vietnam Pro',sans-serif">See all</span>
+<span style="width:48px;height:48px;border-radius:50%;background:#E2E4F3;color:#252A4A;display:grid;place-items:center"><span style="font-family:'Material Symbols Rounded';font-size:24px">volume_up</span></span>
+</div>
+<div style="display:flex;gap:8px;align-items:center"><span style="height:56px;padding:0 20px 0 16px;border-radius:16px;background:#E0E2FF;color:#1B2272;display:flex;align-items:center;gap:10px;font:500 14px/1 'Be Vietnam Pro',sans-serif;box-shadow:0 2px 6px rgba(16,17,22,.10),0 6px 18px rgba(16,17,22,.08)"><span style="font-family:'Material Symbols Rounded';font-size:24px">add</span>Add word</span><span style="font:400 12px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66">Filled = one primary action per screen. Tonal = secondary. Text = low emphasis.</span></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Chips and selection</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<span style="height:36px;padding:0 12px;border-radius:8px;background:#E2E4F3;color:#252A4A;font:500 14px/36px 'Be Vietnam Pro',sans-serif;display:flex;align-items:center;gap:6px"><span style="font-family:'Material Symbols Rounded';font-size:18px">check</span>All<span style="font-weight:400;opacity:.75">2,340</span></span>
+<span style="height:36px;padding:0 12px;border-radius:8px;background:#EDEDF2;font:500 14px/36px 'Be Vietnam Pro',sans-serif">Learning <span style="font-weight:400;opacity:.75">612</span></span>
+<span style="height:36px;padding:0 8px 0 10px;border-radius:8px;background:#E6E6EC;font:500 14px/36px 'Be Vietnam Pro',sans-serif;display:flex;align-items:center;gap:4px"><span style="font-family:'Material Symbols Rounded';font-size:18px;color:#575A66">translate</span>English <span style="font-weight:400;color:#575A66">detected</span></span>
+</div>
+<div style="display:flex;gap:20px;align-items:center">
+<span style="width:52px;height:32px;border-radius:16px;background:#4851B5;display:flex;align-items:center;justify-content:flex-end;padding:0 4px;box-sizing:border-box"><span style="width:24px;height:24px;border-radius:50%;background:#fff"></span></span>
+<span style="width:52px;height:32px;border-radius:16px;background:#DCDCE4;border:2px solid #767986;display:flex;align-items:center;padding:0 6px;box-sizing:border-box"><span style="width:16px;height:16px;border-radius:50%;background:#767986"></span></span>
+<span style="display:flex;border-radius:24px;background:#EDEDF2;padding:4px"><span style="padding:0 14px;height:36px;border-radius:18px;background:#E2E4F3;font:500 13px/36px 'Be Vietnam Pro',sans-serif;color:#252A4A">1 hour</span><span style="padding:0 14px;font:500 13px/36px 'Be Vietnam Pro',sans-serif">3 hours</span></span>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Inputs</div>
+<div style="height:56px;border-radius:28px;background:#E6E6EC;display:flex;align-items:center;gap:12px;padding:0 16px;color:#575A66;font:400 16px/1 'Be Vietnam Pro',sans-serif"><span style="font-family:'Material Symbols Rounded';font-size:24px">search</span>Search vocabulary…</div>
+<div style="height:64px;border-radius:16px;background:#E6E6EC;box-shadow:inset 0 0 0 2px #4851B5;display:flex;align-items:center;gap:8px;padding:0 8px 0 16px"><span style="flex:1;font:500 22px/1 'Be Vietnam Pro',sans-serif">meticulous</span><span style="height:48px;padding:0 20px;border-radius:24px;background:#4851B5;color:#fff;font:500 14px/48px 'Be Vietnam Pro',sans-serif">Save</span></div>
+<div style="padding:10px 16px;border-radius:12px;background:#EDEDF2"><div style="font:500 12px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Translation</div><div style="font:400 16px/1.5 'Be Vietnam Pro',sans-serif;margin-top:4px">tỉ mỉ, kỹ lưỡng</div></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:4px;grid-column:span 2">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66;margin-bottom:8px">Vocabulary row · 72dp, one component for decks, search and favorites · status uses shape and color</div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 32px">
+<sc-for list="{{ rowSamples }}" as="r" hint-placeholder-count="6">
+<div style="display:flex;align-items:center;gap:10px;padding:10px 0;min-height:72px;box-sizing:border-box">
+<div style="flex:1;min-width:0">
+<div lang="{{ r.lang }}" style="font:{{ r.wf }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.w }}</div>
+<sc-if value="{{ r.hasSub }}"><div style="font:400 14px/1.4 'Noto Sans','Noto Sans JP',sans-serif;color:#575A66;margin-top:2px">{{ r.sub }}</div></sc-if>
+<div style="font:400 14px/1.45 'Be Vietnam Pro',sans-serif;color:{{ r.mc }};margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.m }}</div>
+</div>
+<span title="{{ r.st }}" style="font-family:'Material Symbols Rounded';font-size:20px;color:{{ r.sc }};font-variation-settings:{{ r.sf }}">{{ r.si }}</span>
+<span style="width:48px;height:48px;display:grid;place-items:center;color:#575A66"><span style="font-family:'Material Symbols Rounded';font-size:22px">volume_up</span></span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Vocabulary hero</div>
+<div style="padding:16px 16px 12px 20px;border-radius:20px;background:#F3F3F7">
+<div style="font:500 14px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Word of the moment</div>
+<div style="font:600 40px/1.15 'Be Vietnam Pro',sans-serif;margin-top:8px">meticulous</div>
+<div style="font:400 17px/1.4 'Noto Sans',sans-serif;color:#575A66;margin-top:6px">/məˈtɪkjələs/</div>
+<div style="font:400 18px/1.45 'Be Vietnam Pro',sans-serif;margin-top:10px">tỉ mỉ, kỹ lưỡng</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Navigation</div>
+<div style="height:80px;display:flex;background:#EDEDF2;border-radius:16px">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px"><span style="width:64px;height:32px;border-radius:16px;background:#E2E4F3;color:#252A4A;display:grid;place-items:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;font-variation-settings:'FILL' 1">home</span></span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif">Home</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#575A66"><span style="width:64px;height:32px;display:grid;place-items:center"><span style="font-family:'Material Symbols Rounded';font-size:24px">stacks</span></span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif">Decks</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#575A66"><span style="position:relative;width:64px;height:32px;display:grid;place-items:center"><span style="font-family:'Material Symbols Rounded';font-size:24px">style</span><span style="position:absolute;top:0;left:36px;height:18px;padding:0 5px;border-radius:9px;background:#4851B5;color:#fff;font:600 11px/18px 'Be Vietnam Pro',sans-serif">12</span></span><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif">Review</span></div>
+</div>
+<div style="height:56px;display:flex;align-items:center;gap:4px;border-radius:16px;background:#FAFAFC;box-shadow:inset 0 0 0 1px #D6D7DE;padding:0 8px"><span style="font-family:'Material Symbols Rounded';font-size:24px;width:40px;text-align:center">arrow_back</span><span style="flex:1;font:600 22px/1 'Be Vietnam Pro',sans-serif">Progress</span><span style="font-family:'Material Symbols Rounded';font-size:24px;color:#575A66;width:40px;text-align:center">more_vert</span></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Progress and loading</div>
+<div style="display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;background:#E6E6EC"><div style="width:17%;background:#2C7A4B"></div><div style="width:26%;background:#4851B5"></div></div>
+<div style="height:4px;border-radius:2px;background:#E6E6EC;overflow:hidden"><div style="width:62%;height:100%;background:#4851B5"></div></div>
+<div style="display:flex;align-items:center;gap:12px"><span style="width:16px;height:16px;border-radius:50%;border:2px solid #DCDCE4;border-top-color:#4851B5"></span><span style="font:400 14px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66">Getting pronunciation and meaning…</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><span style="width:60%;height:14px;border-radius:7px;background:#E6E6EC"></span><span style="width:84%;height:10px;border-radius:5px;background:#EDEDF2"></span></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Feedback</div>
+<div style="min-height:48px;display:flex;align-items:center;gap:8px;padding:0 8px 0 16px;border-radius:12px;background:#2F3036;color:#F1F0F7;font:400 14px/1.4 'Be Vietnam Pro',sans-serif"><span style="flex:1">“meticulous” marked as learned</span><span style="color:#BEC2FF;font-weight:500;padding:0 8px">Undo</span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;background:#EDEDF2;font:400 14px/1.4 'Be Vietnam Pro',sans-serif"><span style="font-family:'Material Symbols Rounded';font-size:22px;color:#575A66">cloud_off</span>Offline. Saved here; details added later.</div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;background:#FBEBCD;color:#4A2F00;font:400 14px/1.4 'Be Vietnam Pro',sans-serif"><span style="font-family:'Material Symbols Rounded';font-size:22px">info</span>No match in the offline dictionary.</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Flashcard rating · color on label only</div>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+<sc-for list="{{ ratings }}" as="r" hint-placeholder-count="4"><div style="height:64px;border-radius:16px;background:#EDEDF2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font:600 16px/1.2 'Be Vietnam Pro',sans-serif;color:{{ r.c }}">{{ r.l }}</span><span style="font:500 12px/1.2 'Be Vietnam Pro',sans-serif;color:#575A66">{{ r.i }}</span></div></sc-for>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Empty state pattern</div>
+<div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:16px;border-radius:16px;background:#F3F3F7">
+<span style="width:56px;height:56px;border-radius:18px;background:#EDEDF2;color:#575A66;display:grid;place-items:center"><span style="font-family:'Material Symbols Rounded';font-size:28px">star</span></span>
+<div style="font:600 18px/1.35 'Be Vietnam Pro',sans-serif;margin-top:6px">No favorites yet</div>
+<div style="font:400 14px/1.45 'Be Vietnam Pro',sans-serif;color:#575A66">Icon, one-line title, one-line reason, one action. No illustrations.</div>
+</div>
+</div>
+
+</div>
+</div>
+</section>
+
+<section id="core" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff">A</span><span style="font:600 28px/1.2 'Be Vietnam Pro',sans-serif">Core screens</span><span style="font:400 15px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66">Home, Deck Detail, Word Detail, Quick Add</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:40px 32px">
+<sc-for list="{{ core }}" as="p" hint-placeholder-count="5">
+<div id="{{ p.id }}" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:24px"><div style="display:flex;align-items:center;gap:8px;font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66"><a href="#{{ p.id }}" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff;text-decoration:none">{{ p.num }}</a>{{ p.label }}</div><dc-import name="LexisPhone" start="{{ p.start }}" theme="light" fs="{{ p.fs }}" hint-size="432px,912px"></dc-import></div>
+</sc-for>
+</div>
+</section>
+
+<section id="all" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff">B</span><span style="font:600 28px/1.2 'Be Vietnam Pro',sans-serif">All screens</span><span style="font:400 15px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66">Numbered as in the brief</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:40px 32px">
+<sc-for list="{{ all }}" as="p" hint-placeholder-count="8">
+<div id="{{ p.id }}" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:24px"><div style="display:flex;align-items:center;gap:8px;font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66"><a href="#{{ p.id }}" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff;text-decoration:none">{{ p.num }}</a>{{ p.label }}</div><dc-import name="LexisPhone" start="{{ p.start }}" theme="light" fs="{{ p.fs }}" hint-size="432px,912px"></dc-import></div>
+</sc-for>
+</div>
+</section>
+
+<section id="widgets" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff">S21</span><span style="font:600 28px/1.2 'Be Vietnam Pro',sans-serif">Home screen widgets</span><span style="font:400 15px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66">Built for a glance: the word first, one line of help, actions at thumb height. All buttons work.</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:24px">
+<div style="width:880px;max-width:100%;box-sizing:border-box;padding:40px;border-radius:28px;background:linear-gradient(165deg,#7F8DB8 0%,#A9B3D2 50%,#D3D8E6 100%);display:grid;grid-template-columns:176px 176px minmax(0,1fr);gap:24px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="small" theme="light" deck="ielts" hint-size="176px,176px"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Small 2×2</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="small" theme="light" deck="hsk" hint-size="176px,176px"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Small · Hanzi + pinyin</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="medium" theme="light" deck="ielts" hint-size="100%,184px" style="width:100%"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Medium 4×2 · previous, speak, learned, next</span></div>
+<div style="grid-column:span 2;display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="large" theme="light" deck="ielts" ex="{{ true }}" hint-size="100%,384px" style="width:100%"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Large 4×4 · with example</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="medium" theme="light" deck="n5" hint-size="100%,184px" style="width:100%"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Medium · Kanji, kana and romaji</span></div>
+</div>
+<div style="width:880px;max-width:100%;box-sizing:border-box;padding:40px;border-radius:28px;background:linear-gradient(165deg,#1C2134 0%,#2B3250 55%,#40486A 100%);display:grid;grid-template-columns:176px 176px minmax(0,1fr);gap:24px;align-items:start">
+<div style="display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="small" theme="dark" deck="n5" hint-size="176px,176px"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Small · dark</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="small" theme="dark" deck="personal" pron="{{ false }}" hint-size="176px,176px"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Small · word only</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="medium" theme="dark" deck="hsk" hint-size="100%,184px" style="width:100%"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Medium · dark</span></div>
+<div style="grid-column:span 2;display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="large" theme="dark" deck="n5" ex="{{ true }}" hint-size="100%,384px" style="width:100%"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Large · dark</span></div>
+<div style="display:flex;flex-direction:column;gap:8px"><dc-import name="LexisWidget" size="large" theme="dark" deck="personal" hint-size="100%,384px" style="width:100%"></dc-import><span style="font:500 12px/1 'Be Vietnam Pro',sans-serif;color:#fff">Large · phrase with definition</span></div>
+</div>
+</div>
+</section>
+
+<section id="widget-styles" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff">S21+</span><span style="font:600 28px/1.2 'Be Vietnam Pro',sans-serif">Widget styles · exploration</span><span style="font:400 15px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66">Six other treatments for the same words. All interactive.</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:32px 24px">
+
+<div id="w1" style="width:460px;max-width:100%;display:flex;flex-direction:column;gap:12px;scroll-margin-top:24px">
+<div style="height:384px;box-sizing:border-box;padding:32px 40px;border-radius:24px;background:linear-gradient(165deg,#7F8DB8 0%,#A9B3D2 50%,#D3D8E6 100%);display:flex;align-items:center;justify-content:center"><dc-import name="LexisWidgetX" variant="flip" theme="light" hint-size="380px,184px"></dc-import></div>
+<div style="display:flex;align-items:center;gap:8px"><a href="#w1" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff;text-decoration:none">W1</a><span style="font:600 15px/1.3 'Be Vietnam Pro',sans-serif">Flip card</span></div>
+<div style="font:400 14px/1.55 'Be Vietnam Pro',sans-serif;color:#575A66;text-wrap:pretty">Self-test on the home screen. The word shows first; tap to turn the card, then rate yourself. Again and Got it feed the review schedule.</div>
+</div>
+
+<div id="w2" style="width:460px;max-width:100%;display:flex;flex-direction:column;gap:12px;scroll-margin-top:24px">
+<div style="height:384px;box-sizing:border-box;padding:32px 40px;border-radius:24px;background:linear-gradient(165deg,#7F8DB8 0%,#A9B3D2 50%,#D3D8E6 100%);display:flex;align-items:center;justify-content:center"><dc-import name="LexisWidgetX" variant="quiz" theme="light" hint-size="380px,320px"></dc-import></div>
+<div style="display:flex;align-items:center;gap:8px"><a href="#w2" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff;text-decoration:none">W2</a><span style="font:600 15px/1.3 'Be Vietnam Pro',sans-serif">Quick check</span></div>
+<div style="font:400 14px/1.55 'Be Vietnam Pro',sans-serif;color:#575A66;text-wrap:pretty">One question, three meanings. The answer counts as a review, so glancing at the phone becomes practice.</div>
+</div>
+
+<div id="w3" style="width:460px;max-width:100%;display:flex;flex-direction:column;gap:12px;scroll-margin-top:24px">
+<div style="height:384px;box-sizing:border-box;padding:32px 40px;border-radius:24px;background:linear-gradient(165deg,#7F8DB8 0%,#A9B3D2 50%,#D3D8E6 100%);display:flex;align-items:center;justify-content:center;gap:20px"><dc-import name="LexisWidgetX" variant="glyph" theme="light" hint-size="176px,176px"></dc-import><dc-import name="LexisWidgetX" variant="glyph" theme="dark" start-idx="1" hint-size="176px,176px"></dc-import></div>
+<div style="display:flex;align-items:center;gap:8px"><a href="#w3" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff;text-decoration:none">W3</a><span style="font:600 15px/1.3 'Be Vietnam Pro',sans-serif">Glyph tile</span></div>
+<div style="font:400 14px/1.55 'Be Vietnam Pro',sans-serif;color:#575A66;text-wrap:pretty">2×2 for Kanji and Hanzi. One character fills the tile; reading and meaning sit underneath. Tinted with the primary container. Tap for the next one.</div>
+</div>
+
+<div id="w4" style="width:460px;max-width:100%;display:flex;flex-direction:column;gap:12px;scroll-margin-top:24px">
+<div style="height:384px;box-sizing:border-box;padding:32px 40px;border-radius:24px;background:linear-gradient(165deg,#7F8DB8 0%,#A9B3D2 50%,#D3D8E6 100%);display:flex;align-items:center;justify-content:center"><dc-import name="LexisWidgetX" variant="clear" theme="light" hint-size="380px,140px"></dc-import></div>
+<div style="display:flex;align-items:center;gap:8px"><a href="#w4" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff;text-decoration:none">W4</a><span style="font:600 15px/1.3 'Be Vietnam Pro',sans-serif">Clear</span></div>
+<div style="font:400 14px/1.55 'Be Vietnam Pro',sans-serif;color:#575A66;text-wrap:pretty">No background. The word sits on the wallpaper like the clock does, for people who want a quiet home screen.</div>
+</div>
+
+<div id="w5" style="width:460px;max-width:100%;display:flex;flex-direction:column;gap:12px;scroll-margin-top:24px">
+<div style="height:384px;box-sizing:border-box;padding:32px 40px;border-radius:24px;background:linear-gradient(165deg,#7F8DB8 0%,#A9B3D2 50%,#D3D8E6 100%);display:flex;align-items:center;justify-content:center"><dc-import name="LexisWidgetX" variant="editorial" theme="light" hint-size="380px,240px"></dc-import></div>
+<div style="display:flex;align-items:center;gap:8px"><a href="#w5" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff;text-decoration:none">W5</a><span style="font:600 15px/1.3 'Be Vietnam Pro',sans-serif">Dictionary page</span></div>
+<div style="font:400 14px/1.55 'Be Vietnam Pro',sans-serif;color:#575A66;text-wrap:pretty">From the Classical system: serif headword, italic IPA, a numbered sense, one gold hairline and outlined buttons, matted like a printed page.</div>
+</div>
+
+<div id="w6" style="width:460px;max-width:100%;display:flex;flex-direction:column;gap:12px;scroll-margin-top:24px">
+<div style="height:384px;box-sizing:border-box;padding:32px 40px;border-radius:24px;background:linear-gradient(165deg,#7F8DB8 0%,#A9B3D2 50%,#D3D8E6 100%);display:flex;align-items:center;justify-content:center"><dc-import name="LexisWidgetX" variant="ring" theme="light" hint-size="380px,184px"></dc-import></div>
+<div style="display:flex;align-items:center;gap:8px"><a href="#w6" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff;text-decoration:none">W6</a><span style="font:600 15px/1.3 'Be Vietnam Pro',sans-serif">Daily ring</span></div>
+<div style="font:400 14px/1.55 'Be Vietnam Pro',sans-serif;color:#575A66;text-wrap:pretty">Today’s goal as a ring, the words due, and one Review button. The next word is named so the number has a face.</div>
+</div>
+
+</div>
+<div style="padding:40px;border-radius:28px;background:linear-gradient(165deg,#1C2134 0%,#2B3250 55%,#40486A 100%);display:flex;flex-wrap:wrap;gap:32px;align-items:center">
+<dc-import name="LexisWidgetX" variant="flip" theme="dark" start-idx="2" hint-size="380px,184px"></dc-import>
+<dc-import name="LexisWidgetX" variant="quiz" theme="dark" start-idx="1" hint-size="380px,320px"></dc-import>
+<dc-import name="LexisWidgetX" variant="editorial" theme="dark" start-idx="3" hint-size="380px,240px"></dc-import>
+<dc-import name="LexisWidgetX" variant="ring" theme="dark" hint-size="380px,184px"></dc-import>
+<dc-import name="LexisWidgetX" variant="clear" theme="dark" start-idx="4" hint-size="380px,140px"></dc-import>
+<dc-import name="LexisWidgetX" variant="glyph" theme="dark" start-idx="3" hint-size="176px,176px"></dc-import>
+</div>
+</section>
+
+<section id="scenes" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><span style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff">W7</span><span style="font:600 28px/1.2 'Be Vietnam Pro',sans-serif">Widget · Scenes</span><span style="font:400 15px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66">A landscape from the country of the language behind each word. The vocabulary matches the scene.</span></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:24px">
+<div style="display:flex;flex-direction:column;gap:10px"><dc-import name="LexisWidgetScene" lang="ja" size="medium" hint-size="100%,184px" style="width:100%"></dc-import><span style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Japanese · Fuji at dusk</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><dc-import name="LexisWidgetScene" lang="zh" size="medium" hint-size="100%,184px" style="width:100%"></dc-import><span style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Chinese · Guilin karst in mist</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><dc-import name="LexisWidgetScene" lang="en" size="medium" hint-size="100%,184px" style="width:100%"></dc-import><span style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">English · Cotswold hills</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><dc-import name="LexisWidgetScene" lang="ko" size="medium" hint-size="100%,184px" style="width:100%"></dc-import><span style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Korean · Seoraksan ridges</span></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:24px">
+<div style="display:flex;flex-direction:column;gap:10px"><dc-import name="LexisWidgetScene" lang="ja" size="large" start-idx="1" hint-size="100%,384px" style="width:100%"></dc-import><span style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Large 4×4 · Japanese</span></div>
+<div style="display:flex;flex-direction:column;gap:10px"><dc-import name="LexisWidgetScene" lang="zh" size="large" start-idx="3" hint-size="100%,384px" style="width:100%"></dc-import><span style="font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66">Large 4×4 · Chinese</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px;padding:24px;border-radius:20px;background:#FAFAFC">
+<div style="font:600 16px/1.4 'Be Vietnam Pro',sans-serif">With real photos</div>
+<div style="font:400 14px/1.5 'Be Vietnam Pro',sans-serif;color:#575A66">The scenes above are flat illustrations. Drag a photo onto each widget below to see it with real imagery; text sits on a dark fade so it stays readable.</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:24px;margin-top:8px">
+<dc-import name="LexisWidgetScene" lang="ja" size="medium" photo="{{ true }}" hint-size="100%,184px" style="width:100%"></dc-import>
+<dc-import name="LexisWidgetScene" lang="zh" size="medium" photo="{{ true }}" hint-size="100%,184px" style="width:100%"></dc-import>
+<dc-import name="LexisWidgetScene" lang="en" size="medium" photo="{{ true }}" hint-size="100%,184px" style="width:100%"></dc-import>
+<dc-import name="LexisWidgetScene" lang="ko" size="medium" photo="{{ true }}" hint-size="100%,184px" style="width:100%"></dc-import>
+</div>
+</div>
+</section>
+
+<section id="dark" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff">C</span><span style="font:600 28px/1.2 'Be Vietnam Pro',sans-serif">Dark mode</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:40px 32px;padding:40px;border-radius:28px;background:#1E1F24">
+<sc-for list="{{ dark }}" as="p" hint-placeholder-count="8">
+<div id="{{ p.id }}" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:24px"><div style="display:flex;align-items:center;gap:8px;font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#ABADBA"><a href="#{{ p.id }}" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#E4E4EB;color:#1A1B21;text-decoration:none">{{ p.num }}</a>{{ p.label }}</div><dc-import name="LexisPhone" start="{{ p.start }}" theme="dark" fs="{{ p.fs }}" hint-size="432px,912px"></dc-import></div>
+</sc-for>
+</div>
+</section>
+
+<section id="states" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:14px"><span style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff">D</span><span style="font:600 28px/1.2 'Be Vietnam Pro',sans-serif">States and edge cases</span><span style="font:400 15px/1.4 'Be Vietnam Pro',sans-serif;color:#575A66">Scripts, long content, large font, offline, errors, empty states</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:40px 32px">
+<sc-for list="{{ states }}" as="p" hint-placeholder-count="8">
+<div id="{{ p.id }}" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:24px"><div style="display:flex;align-items:center;gap:8px;font:500 13px/1.3 'Be Vietnam Pro',sans-serif;color:#575A66"><a href="#{{ p.id }}" style="font:600 11px/1 ui-monospace,Menlo,monospace;padding:4px 7px;border-radius:5px;background:#1A1B21;color:#fff;text-decoration:none">{{ p.num }}</a>{{ p.label }}</div><dc-import name="LexisPhone" start="{{ p.start }}" theme="light" fs="{{ p.fs }}" hint-size="432px,912px"></dc-import></div>
+</sc-for>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;protoTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Light&quot;,&quot;Dark&quot;],&quot;default&quot;:&quot;Light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype phone&quot;},&quot;protoFont&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Default&quot;,&quot;Large (130%)&quot;],&quot;default&quot;:&quot;Default&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype phone&quot;}}">class Component extends DCLogic {
+  renderVals() {
+    const P = (num, start, label, fs) => ({ id: 's' + num.toLowerCase().replace(/[^a-z0-9]/g, ''), num, start, label, fs: fs || 1 });
+    const N = "'Noto Sans','Noto Sans JP',sans-serif";
+    return {
+      theme: this.props.protoTheme === 'Dark' ? 'dark' : 'light',
+      fs: this.props.protoFont === 'Large (130%)' ? 1.3 : 1,
+      swL: [['Primary', '#4851B5'], ['On primary', '#FFFFFF'], ['Primary container', '#E0E2FF'], ['On primary cont.', '#1B2272'], ['Secondary container', '#E2E4F3'], ['Surface', '#FAFAFC'], ['Container low', '#F3F3F7'], ['Container', '#EDEDF2'], ['Container high', '#E6E6EC'], ['On surface', '#1A1B21'], ['On surface variant', '#575A66'], ['Outline variant', '#D6D7DE'], ['Success', '#2C7A4B'], ['Success container', '#D9F0E1'], ['Warning', '#8C5A00'], ['Error', '#B3261E']].map(([name, hex]) => ({ name, hex })),
+      swD: [['Primary', '#BAC0FF'], ['On primary', '#1A2180'], ['Primary container', '#323B9C'], ['On primary cont.', '#E0E2FF'], ['Secondary container', '#30334A'], ['Surface', '#121318'], ['Container low', '#1A1B21'], ['Container', '#1F2026'], ['Container high', '#292A31'], ['On surface', '#E4E4EB'], ['On surface variant', '#ABADBA'], ['Outline variant', '#3E4049'], ['Success', '#7FD19E'], ['Success container', '#1C3A28'], ['Warning', '#EFC06A'], ['Error', '#F2B8B5']].map(([name, hex]) => ({ name, hex })),
+      typeRows: [
+        ['Vocabulary hero', '600 · 40–44sp', "600 40px/1.15 'Be Vietnam Pro',sans-serif", 'meticulous', 'en'],
+        ['Hero · CJK', '500 · 52–64sp', "500 52px/1.2 'Noto Sans JP',sans-serif", '食べる', 'ja'],
+        ['Screen title', '600 · 28sp', "600 28px/1.25 'Be Vietnam Pro',sans-serif", 'IELTS 3000', 'en'],
+        ['Top bar title', '600 · 22sp', "600 22px/1.3 'Be Vietnam Pro',sans-serif", 'Progress', 'en'],
+        ['Section title', '600 · 18sp', "600 18px/1.35 'Be Vietnam Pro',sans-serif", '12 words due today', 'en'],
+        ['Meaning', '500 · 22sp', "500 22px/1.35 'Be Vietnam Pro',sans-serif", 'tỉ mỉ, kỹ lưỡng', 'vi'],
+        ['Pronunciation', 'Noto Sans 400 · 17sp', `400 17px/1.4 ${N}`, '/məˈtɪkjələs/ · xuéxí · たべる', 'en'],
+        ['Body', '400 · 16sp', "400 16px/1.5 'Be Vietnam Pro',sans-serif", 'She was meticulous in preparing the report.', 'en'],
+        ['Supporting', '400 · 14sp', "400 14px/1.45 'Be Vietnam Pro',sans-serif", '2,340 words · 399 learned', 'en'],
+        ['Label', '500 · 14 / 12sp', "500 14px/1.3 'Be Vietnam Pro',sans-serif", 'Review · Mark learned', 'en'],
+      ].map(([role, spec, font, sample, lang]) => ({ role, spec, font, sample, lang })),
+      spacing: [4, 8, 12, 16, 24, 32].map(v => ({ v, px: v + 'px' })),
+      radii: [['8', 'chips'], ['12', 'fields, tiles'], ['16', 'FAB, banners'], ['20', 'hero, preview'], ['28', 'sheets, widgets'], ['full', 'buttons']].map(([v, use]) => ({ v, use, px: v === 'full' ? '28px' : v + 'px' })),
+      rowSamples: [
+        ['meticulous', '/məˈtɪkjələs/', 'tỉ mỉ, kỹ lưỡng', 'en', 'Learning', 'timelapse', '#4851B5', "'FILL' 0"],
+        ['食べる', 'たべる · taberu', 'ăn', 'ja', 'Learned', 'check_circle', '#2C7A4B', "'FILL' 1"],
+        ['学习', 'xuéxí', 'học tập', 'zh', 'Learning', 'timelapse', '#4851B5', "'FILL' 0"],
+        ['uncharacteristically', '/ˌʌnkærəktəˈrɪstɪkli/', 'một cách khác thường, không giống với tính cách…', 'en', 'New', 'radio_button_unchecked', '#575A66', "'FILL' 0"],
+        ['scrutinize', '', 'Getting details…', 'en', 'New', 'radio_button_unchecked', '#575A66', "'FILL' 0"],
+        ['hygge', '', 'No meaning yet', 'en', 'New', 'radio_button_unchecked', '#575A66', "'FILL' 0"],
+      ].map(([w, sub, m, lang, st, si, sc, sf]) => ({ w, sub, hasSub: !!sub, m, mc: m === 'No meaning yet' ? '#8C5A00' : m === 'Getting details…' ? '#575A66' : '#1A1B21', lang, st, si, sc, sf, wf: `${lang === 'en' ? 600 : 500} ${lang === 'en' ? 18 : 20}px/1.2 ${lang === 'ja' ? "'Noto Sans JP'" : lang === 'zh' ? "'Noto Sans SC'" : "'Be Vietnam Pro'"},sans-serif` })),
+      ratings: [['Again', '<1 min', '#B3261E'], ['Hard', '6 min', '#8C5A00'], ['Good', '1 day', '#4851B5'], ['Easy', '4 days', '#2C7A4B']].map(([l, i, c]) => ({ l, i, c })),
+      core: [P('S00', 'intro', 'Welcome · sign in with Google or skip'), P('S00b', 'intro-google', 'Google account picker'), P('S00c', 'intro-signing', 'Signing in'), P('S02', 'home', 'Home'), P('S07', 'deck', 'Deck Detail'), P('S08', 'word', 'Word Detail'), P('S03', 'quickadd', 'Quick Add · typing, language detected'), P('S03b', 'quickadd-saved', 'Quick Add · saved, enriching in background')],
+      all: [
+        P('S01', 'welcome', 'First launch'), P('S04', 'edit', 'Add / edit word'), P('S05', 'decks', 'Decks'), P('S06', 'createdeck', 'Create deck'),
+        P('S09', 'word-proc', 'Processing word'), P('S10', 'import', 'Import · choose file'), P('S10b', 'import-preview', 'Import · preview and map columns'), P('S11', 'importing', 'Import progress'),
+        P('S11b', 'importdone', 'Import complete'), P('S12', 'search', 'Search · “học” across decks'), P('S13', 'review', 'Review home'), P('S14', 'flash', 'Flashcard front'),
+        P('S15', 'flash-back', 'Flashcard back'), P('S16', 'reviewdone', 'Review complete'), P('S17', 'progress', 'Progress'), P('S18', 'favorites', 'Favorites'),
+        P('S19', 'widgets', 'Widget management'), P('S20', 'createwidget', 'Create widget · live preview'), P('S20c', 'createwidget-flip', 'Create widget · choosing a style'), P('S20b', 'pin', 'Add to Home screen'), P('S21', 'launcher', 'Widget on the home screen'),
+        P('S22', 'settings', 'Settings'),
+      ],
+      dark: [P('D02', 'home', 'Home'), P('D07', 'deck', 'Deck Detail'), P('D08', 'word-ja', 'Word Detail · Japanese'), P('D03', 'quickadd-saved', 'Quick Add'), P('D15', 'flash-back', 'Flashcard back'), P('D13', 'review', 'Review'), P('D20', 'createwidget', 'Create widget'), P('D22', 'settings', 'Settings')],
+      states: [
+        P('E1', 'word-long', 'Very long word + long translation'), P('E2', 'word-ja', 'Japanese · Kanji, kana, romaji'), P('E3', 'word-zh', 'Chinese · Hanzi, pinyin'), P('E4', 'deck-big', 'Deck with ~10,000 words, 126 processing'),
+        P('E5', 'word-offline', 'Offline · details pending'), P('E6', 'word-missing', 'Missing meaning and pronunciation'), P('E7', 'quickadd-ambig', 'Hanzi: Chinese or Japanese?'), P('E8', 'quickadd-fail', 'Language detection failed'),
+        P('E9', 'import-error', 'Invalid CSV'), P('E10', 'home-tts', 'TTS voice unavailable'), P('E11', 'home-offline', 'Offline Home'), P('E12', 'search-empty', 'No search results'),
+        P('E13', 'review-empty', 'No review due'), P('E14', 'favorites-empty', 'No favorites'), P('E15', 'widgets-empty', 'No widgets'), P('E16', 'deck-empty', 'Empty deck'),
+        P('E17', 'home', 'Home · system font 130%', 1.3), P('E18', 'word', 'Word Detail · system font 130%', 1.3),
+        P('E19', 'qa-picker', 'Deck picker sheet'), P('E20', 'deck-delete', 'Delete deck · confirmation'), P('E21', 'flash-swipe', 'Flashcard · swiping right for Good'),
+        P('E22', 'deck-select', 'Deck · bulk select (long-press a row)'), P('E23', 'home-nudge', 'Home · widget nudge after 5 words'),
+      ],
+    };
+  }
+}</script>
+</body>
+</html>
